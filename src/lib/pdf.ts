@@ -1,7 +1,8 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import type { DecryptedClient } from "@/lib/clients";
 import type { RiskProfileView } from "@/lib/riskProfiles";
-import { RISK_LINE_LABELS } from "@/lib/validation";
+import type { PolicyView } from "@/lib/policies";
+import { POLICY_STATUS_LABELS, RISK_LINE_LABELS } from "@/lib/validation";
 
 /**
  * Renders a client's stored data into a "Risk Submission Summary" PDF.
@@ -22,8 +23,19 @@ const RULE = rgb(0.8, 0.82, 0.86);
 interface BuildInput {
   client: DecryptedClient;
   riskProfiles: RiskProfileView[];
+  policies?: PolicyView[];
   organizationName: string;
   generatedBy: string;
+}
+
+function money(value: string | null): string {
+  if (!value) return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? `$${n.toLocaleString()}` : value;
+}
+
+function isoDate(value: Date | null): string {
+  return value ? new Date(value).toISOString().slice(0, 10) : "—";
 }
 
 /** A tiny cursor-based layout helper so content flows down and paginates. */
@@ -141,6 +153,37 @@ export async function buildSubmissionPdf(input: BuildInput): Promise<Uint8Array>
       }
       if (profile.notes) {
         L.text(`Notes: ${profile.notes}`, { size: 10, color: MUTED });
+      }
+    }
+  }
+
+  // Policies
+  const policies = input.policies ?? [];
+  L.space(6);
+  L.rule();
+  L.text("Policies", { size: 14, bold: true });
+  L.space(2);
+  if (policies.length === 0) {
+    L.text("No policies recorded.", { size: 11, color: MUTED });
+  } else {
+    for (const policy of policies) {
+      L.space(4);
+      L.text(`${policy.carrier} — ${policy.policyNumber}`, { size: 12, bold: true });
+      L.row("Line of business", RISK_LINE_LABELS[policy.lineOfBusiness]);
+      L.row("Status", POLICY_STATUS_LABELS[policy.status]);
+      L.row("Premium", money(policy.premium));
+      L.row("Effective", isoDate(policy.effectiveDate));
+      L.row("Expiration", isoDate(policy.expirationDate));
+      for (const c of policy.coverageItems) {
+        const parts = [
+          c.limit ? `limit ${money(c.limit)}` : null,
+          c.deductible ? `deductible ${money(c.deductible)}` : null,
+        ].filter(Boolean);
+        L.text(`• ${c.name}${parts.length ? ` (${parts.join(", ")})` : ""}`, {
+          size: 10,
+          color: MUTED,
+          indent: 10,
+        });
       }
     }
   }

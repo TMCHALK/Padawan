@@ -6,10 +6,13 @@ import { signIn } from "@/lib/auth";
 import { registerUserAndOrg, SignUpError } from "@/lib/accounts";
 import { createClient, updateClient } from "@/lib/clients";
 import { createRiskProfile } from "@/lib/riskProfiles";
+import { createPolicy } from "@/lib/policies";
 import { requireSession } from "@/lib/session";
 import {
   clientInputSchema,
   parseAttributePairs,
+  parseCoverageRows,
+  policyInputSchema,
   riskProfileInputSchema,
   signUpSchema,
 } from "@/lib/validation";
@@ -167,4 +170,46 @@ export async function updateClientAction(
   revalidatePath("/clients");
   revalidatePath(`/clients/${clientId}`);
   redirect(`/clients/${clientId}`);
+}
+
+/** Adds a policy (with coverage line items) to a client, then refreshes the page. */
+export async function createPolicyAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const clientId = formData.get("clientId");
+  if (typeof clientId !== "string" || !clientId) {
+    return { error: "Missing client reference" };
+  }
+
+  const coverages = parseCoverageRows(
+    formData.getAll("covName").map(String),
+    formData.getAll("covLimit").map(String),
+    formData.getAll("covDeductible").map(String),
+  );
+
+  const parsed = policyInputSchema.safeParse({
+    carrier: formData.get("carrier"),
+    policyNumber: formData.get("policyNumber"),
+    lineOfBusiness: formData.get("lineOfBusiness"),
+    premium: formData.get("premium") || "",
+    effectiveDate: formData.get("effectiveDate") || "",
+    expirationDate: formData.get("expirationDate") || "",
+    status: formData.get("status") || undefined,
+    coverages,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await createPolicy(userId, organizationId, clientId, parsed.data);
+  } catch {
+    return { error: "Could not save policy. Please try again." };
+  }
+
+  revalidatePath(`/clients/${clientId}`);
+  return {};
 }
