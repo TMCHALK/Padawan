@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getClient } from "@/lib/clients";
 import { listRiskProfiles } from "@/lib/riskProfiles";
 import { listPolicies } from "@/lib/policies";
+import { summarizePortfolio } from "@/lib/portfolio";
 import { requireSession } from "@/lib/session";
 import { POLICY_STATUS_LABELS, RISK_LINE_LABELS } from "@/lib/validation";
 import { RiskProfileForm } from "@/components/RiskProfileForm";
@@ -40,6 +41,7 @@ export default async function ClientDetailPage({
   if (!client) notFound();
   const riskProfiles = await listRiskProfiles(userId, organizationId, id);
   const policies = await listPolicies(userId, organizationId, id);
+  const summary = summarizePortfolio(riskProfiles, policies);
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-10">
@@ -75,6 +77,25 @@ export default async function ClientDetailPage({
         <Field label="Date of birth" value={client.dob} />
         <Field label="Address" value={client.address} />
       </dl>
+
+      <section className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Risk profiles", value: String(summary.riskProfileCount) },
+          { label: "Policies", value: String(summary.policyCount) },
+          { label: "Coverage items", value: String(summary.coverageItemCount) },
+          { label: "Total premium", value: `$${summary.totalPremium.toLocaleString()}` },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-md border border-white/10 p-3">
+            <div className="text-xs uppercase tracking-wide text-white/50">
+              {stat.label}
+            </div>
+            <div className="mt-1 text-xl font-semibold">{stat.value}</div>
+          </div>
+        ))}
+      </section>
+      <p className="mt-2 text-xs text-white/40">
+        Descriptive data summary only — not a coverage adequacy assessment.
+      </p>
 
       <section className="mt-10">
         <h2 className="mb-4 text-lg font-semibold">Risk profiles</h2>
