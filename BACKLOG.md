@@ -5,11 +5,9 @@ implements it on a branch, and opens a CI-gated PR. Keep items small enough to
 ship in one loop iteration. Move completed items to the bottom and check them off.
 
 ## Now (top of stack)
-- [ ] **Edit existing risk profile** (UPDATE path + audit).
+- [ ] **Portfolio data summary** on the client page — descriptive only
+      (total premium, policy counts by status, coverage/risk-line counts).
 - [ ] **Edit / delete policy** and delete risk profile (CRUD completeness).
-- [ ] **Coverage data summary** view — organize/aggregate captured policy + coverage
-      data (descriptive only — totals/counts/list; no adequacy or gap judgment, to
-      stay off the E&O line).
 
 ## Next
 - [ ] HubSpot contact sync (create/update on client save; store `hubspotContactId`).
@@ -25,6 +23,7 @@ ship in one loop iteration. Move completed items to the bottom and check them of
 - [ ] Quote import (CSV) + comparison view.
 
 ## Done
+- [x] Edit an existing risk profile (UPDATE + audit). (PR #7)
 - [x] Policy + coverage line-item capture, included in the submission PDF.
       Verified live (PDF contains the captured policy/coverage). (PR #6)
 - [x] Risk Submission Summary PDF — first end-to-end output (capture risk data →

@@ -91,12 +91,13 @@ Integration/default branch: `claude/insurance-broker-tool-gj29y7` (no `main`).
 | 3 | Edit & status-change client | ✅ merged (PR #4) |
 | 4 | **Risk Submission Summary PDF — first end-to-end output** | ✅ merged (PR #5) |
 | 5 | Policy + coverage capture (richer submission PDF) | ✅ merged (PR #6) |
+| 6 | Edit an existing risk profile | ✅ merged (PR #7) |
 
 ## In progress
-- Continuing with the next safe backlog slice (e.g. edit existing risk profile)
-  if time permits overnight; any further work lands as its own CI-gated PR and is
-  noted here. HubSpot/Gmail sync is intentionally NOT being done autonomously
-  (see "Blocked — needs Tyler").
+- Continuing with safe, descriptive backlog slices (portfolio data summary, then
+  delete capability) if time permits overnight; each lands as its own CI-gated PR
+  and is noted here. HubSpot/Gmail sync is intentionally NOT being done
+  autonomously (see "Blocked — needs Tyler").
 
 ## Notes on orchestration
 - Phases were built on the main thread and via parallel worktree-isolated
