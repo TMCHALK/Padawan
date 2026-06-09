@@ -5,8 +5,14 @@ import { revalidatePath } from "next/cache";
 import { signIn } from "@/lib/auth";
 import { registerUserAndOrg, SignUpError } from "@/lib/accounts";
 import { createClient } from "@/lib/clients";
+import { createRiskProfile } from "@/lib/riskProfiles";
 import { requireSession } from "@/lib/session";
-import { clientInputSchema, signUpSchema } from "@/lib/validation";
+import {
+  clientInputSchema,
+  parseAttributePairs,
+  riskProfileInputSchema,
+  signUpSchema,
+} from "@/lib/validation";
 
 export interface FormState {
   error?: string;
@@ -88,4 +94,40 @@ export async function createClientAction(
 
   revalidatePath("/clients");
   redirect("/clients");
+}
+
+/** Adds a structured risk profile to a client, then refreshes the detail page. */
+export async function createRiskProfileAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const clientId = formData.get("clientId");
+  if (typeof clientId !== "string" || !clientId) {
+    return { error: "Missing client reference" };
+  }
+
+  const attributes = parseAttributePairs(
+    formData.getAll("attrKey").map(String),
+    formData.getAll("attrValue").map(String),
+  );
+
+  const parsed = riskProfileInputSchema.safeParse({
+    lineOfBusiness: formData.get("lineOfBusiness"),
+    attributes,
+    notes: formData.get("notes") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await createRiskProfile(userId, organizationId, clientId, parsed.data);
+  } catch {
+    return { error: "Could not save risk profile. Please try again." };
+  }
+
+  revalidatePath(`/clients/${clientId}`);
+  return {};
 }
