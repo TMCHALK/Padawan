@@ -1,4 +1,4 @@
-import { PrismaClient, Role } from "@prisma/client";
+import { PrismaClient, RiskLineOfBusiness, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { encrypt, encryptOptional } from "../src/lib/crypto";
 import { buildDisplayName } from "../src/lib/validation";
@@ -43,8 +43,8 @@ async function main() {
 
   const existing = await prisma.client.count({ where: { organizationId: org.id } });
   if (existing === 0) {
-    for (const c of SYNTHETIC_CLIENTS) {
-      await prisma.client.create({
+    for (const [i, c] of SYNTHETIC_CLIENTS.entries()) {
+      const client = await prisma.client.create({
         data: {
           organizationId: org.id,
           firstNameEnc: encrypt(c.firstName),
@@ -54,6 +54,25 @@ async function main() {
           displayName: buildDisplayName(c.firstName, c.lastName),
         },
       });
+
+      // Give the first client a sample risk profile so the end-to-end loop
+      // (capture risk data -> download submission PDF) is demonstrable on a
+      // fresh seed. Synthetic data only.
+      if (i === 0) {
+        await prisma.riskProfile.create({
+          data: {
+            clientId: client.id,
+            lineOfBusiness: RiskLineOfBusiness.AUTO,
+            attributes: {
+              "Vehicle VIN": "1HGCM82633A004352",
+              "Vehicle Year": "2020",
+              "Primary Use": "Commute",
+              "Annual Mileage": "12000",
+            },
+            notes: "Garaged overnight; single driver.",
+          },
+        });
+      }
     }
   }
 
