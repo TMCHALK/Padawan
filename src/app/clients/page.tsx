@@ -17,12 +17,20 @@ export default async function ClientsPage({
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Clients</h1>
-        <Link
-          href="/clients/new"
-          className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
-        >
-          New client
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/audit"
+            className="rounded-md border border-white/10 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/5"
+          >
+            Audit log
+          </Link>
+          <Link
+            href="/clients/new"
+            className="rounded-md bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-400"
+          >
+            New client
+          </Link>
+        </div>
       </div>
 
       <form className="mb-6" action="/clients" method="get">
