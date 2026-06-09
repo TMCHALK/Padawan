@@ -38,3 +38,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# claude code agent worktrees (created inside the repo during parallel runs)
+.claude/worktrees/
