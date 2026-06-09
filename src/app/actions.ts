@@ -4,7 +4,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { signIn } from "@/lib/auth";
 import { registerUserAndOrg, SignUpError } from "@/lib/accounts";
-import { createClient } from "@/lib/clients";
+import { createClient, updateClient } from "@/lib/clients";
 import { createRiskProfile } from "@/lib/riskProfiles";
 import { requireSession } from "@/lib/session";
 import {
@@ -130,4 +130,41 @@ export async function createRiskProfileAction(
 
   revalidatePath(`/clients/${clientId}`);
   return {};
+}
+
+/** Updates an existing client record (incl. status), then redirects to its detail page. */
+export async function updateClientAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const clientId = formData.get("clientId");
+  if (typeof clientId !== "string" || !clientId) {
+    return { error: "Missing client reference" };
+  }
+
+  const parsed = clientInputSchema.safeParse({
+    firstName: formData.get("firstName"),
+    lastName: formData.get("lastName"),
+    email: formData.get("email"),
+    phone: formData.get("phone"),
+    address: formData.get("address"),
+    dob: formData.get("dob"),
+    status: formData.get("status") || undefined,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await updateClient(userId, organizationId, clientId, parsed.data);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { error: "Could not save client. Please try again." };
+  }
+
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}`);
 }
