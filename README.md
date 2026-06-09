@@ -19,9 +19,9 @@ cp .env.example .env.local
 #   - set PII_ENCRYPTION_KEY: openssl rand -base64 32   (must decode to 32 bytes)
 #   - set DATABASE_URL        (a local Postgres is provided below)
 
-# 3. Start Postgres + sync schema + seed synthetic data
+# 3. Start Postgres + apply migrations + seed synthetic data
 docker compose up -d
-npm run db:push
+npm run db:migrate   # applies prisma/migrations (use db:push only for throwaway prototyping)
 npm run db:seed
 
 # 4. Run

@@ -54,5 +54,5 @@ never decide. Crossing this line creates E&O and unauthorized-practice exposure.
 - Branch + PR; CI green before merge (see `docs/AUTONOMOUS_LOOP.md`).
 
 ## Commands
-- Dev: `docker compose up -d` then `npm run db:push` (or `db:migrate`), `npm run db:seed`, `npm run dev`
+- Dev: `docker compose up -d` then `npm run db:migrate` (applies committed migrations; `db:push` is for throwaway prototyping only), `npm run db:seed`, `npm run dev`
 - Checks: `npm run lint && npm run typecheck && npm run test`
