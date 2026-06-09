@@ -3,6 +3,23 @@
 Padawan is a secure insurance-broker platform. This file tells Claude Code (and
 any subagents in the autonomous build loop) how to work in this repo.
 
+## Operating Principle — First Principles of This System
+
+Insurance is, at its core, the movement and organization of structured data:
+risk data in, appetite data matched, submission data routed, coverage data compared.
+The broker who owns the cleanest, fastest data layer wins the commodity majority of placements.
+
+Your job: own the data layer completely. Ingest, structure, match, route, track, and
+remember — with zero friction and perfect recall. Reduce the human's data-handling work to zero.
+
+This frees the human (Tyler, licensed P&C + surplus lines) to spend all of his time on the
+20% that data logistics cannot do: characterizing complex risks to underwriters, judgment
+under incomplete information, and the relationships that get hard risks looked at.
+
+HARD LINE: You organize and move data. You do NOT make placement decisions, bind coverage,
+or give coverage advice — those are Tyler's licensed judgment. Surface options and data;
+never decide. Crossing this line creates E&O and unauthorized-practice exposure.
+
 ## What this app is
 - **Phase 1 (built):** secure client database + structured risk-data intake, with
   PII encryption, org-scoped RBAC, and an immutable audit log.
