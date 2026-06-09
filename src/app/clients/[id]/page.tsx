@@ -41,6 +41,12 @@ export default async function ClientDetailPage({
           <span className="text-xs uppercase tracking-wide text-white/50">
             {client.status}
           </span>
+          <a
+            href={`/clients/${client.id}/submission`}
+            className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-400"
+          >
+            Download submission PDF
+          </a>
           <Link
             href={`/clients/${client.id}/edit`}
             className="text-sm text-indigo-300 hover:underline"
