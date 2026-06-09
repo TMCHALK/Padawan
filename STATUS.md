@@ -1,5 +1,9 @@
 # STATUS — Padawan
 
+> 🗄️ **ARCHIVED / PAUSED (2026-06-09).** Not under active development — see the
+> archive notice in `README.md` for why and what's reusable. The report below is
+> the last active state.
+
 ---
 
 # ☀️ MORNING REPORT (read me first)
