@@ -91,4 +91,13 @@ describe("riskProfileInputSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("accepts cleared notes on edit (empty string)", () => {
+    const result = riskProfileInputSchema.safeParse({
+      lineOfBusiness: RiskLineOfBusiness.HOME,
+      attributes: { "Roof age": "5" },
+      notes: "",
+    });
+    expect(result.success).toBe(true);
+  });
 });
