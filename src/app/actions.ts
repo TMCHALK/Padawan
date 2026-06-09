@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { signIn } from "@/lib/auth";
 import { registerUserAndOrg, SignUpError } from "@/lib/accounts";
 import { createClient, updateClient } from "@/lib/clients";
-import { createRiskProfile } from "@/lib/riskProfiles";
+import { createRiskProfile, updateRiskProfile } from "@/lib/riskProfiles";
 import { createPolicy } from "@/lib/policies";
 import { requireSession } from "@/lib/session";
 import {
@@ -133,6 +133,48 @@ export async function createRiskProfileAction(
 
   revalidatePath(`/clients/${clientId}`);
   return {};
+}
+
+/** Updates an existing risk profile, then redirects to the client's detail page. */
+export async function updateRiskProfileAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const riskProfileId = formData.get("riskProfileId");
+  if (typeof riskProfileId !== "string" || !riskProfileId) {
+    return { error: "Missing risk profile reference" };
+  }
+
+  const attributes = parseAttributePairs(
+    formData.getAll("attrKey").map(String),
+    formData.getAll("attrValue").map(String),
+  );
+
+  const parsed = riskProfileInputSchema.safeParse({
+    lineOfBusiness: formData.get("lineOfBusiness"),
+    attributes,
+    notes: formData.get("notes") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  let clientId: string;
+  try {
+    ({ clientId } = await updateRiskProfile(
+      userId,
+      organizationId,
+      riskProfileId,
+      parsed.data,
+    ));
+  } catch {
+    return { error: "Could not update risk profile. Please try again." };
+  }
+
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}`);
 }
 
 /** Updates an existing client record (incl. status), then redirects to its detail page. */

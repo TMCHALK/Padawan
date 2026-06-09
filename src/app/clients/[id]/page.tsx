@@ -94,11 +94,19 @@ export default async function ClientDetailPage({
                   <span className="font-medium">
                     {RISK_LINE_LABELS[profile.lineOfBusiness]}
                   </span>
-                  {profile.riskScore !== null ? (
-                    <span className="text-xs text-white/50">
-                      Risk score: {profile.riskScore}
-                    </span>
-                  ) : null}
+                  <div className="flex items-center gap-3">
+                    {profile.riskScore !== null ? (
+                      <span className="text-xs text-white/50">
+                        Risk score: {profile.riskScore}
+                      </span>
+                    ) : null}
+                    <Link
+                      href={`/clients/${client.id}/risk/${profile.id}/edit`}
+                      className="text-xs text-indigo-300 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </div>
                 {Object.keys(profile.attributes).length > 0 ? (
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">

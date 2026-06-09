@@ -129,3 +129,70 @@ export async function createRiskProfile(
     return profile;
   });
 }
+
+/** Fetches a single risk profile (org-scoped via its client), recording a READ. */
+export async function getRiskProfile(
+  userId: string,
+  organizationId: string,
+  profileId: string,
+): Promise<(RiskProfileView & { clientId: string }) | null> {
+  await requireOrgRole(userId, organizationId, Role.VIEWER);
+
+  const row = await prisma.riskProfile.findFirst({
+    where: { id: profileId, client: { organizationId } },
+  });
+  if (!row) return null;
+
+  await recordAudit({
+    organizationId,
+    userId,
+    action: AuditAction.READ,
+    entityType: "RiskProfile",
+    entityId: row.id,
+  });
+
+  return { ...toView(row), clientId: row.clientId };
+}
+
+/** Updates a risk profile (line of business, attributes, notes), writing an UPDATE audit. */
+export async function updateRiskProfile(
+  userId: string,
+  organizationId: string,
+  profileId: string,
+  input: RiskProfileInput,
+): Promise<{ id: string; clientId: string }> {
+  await requireOrgRole(userId, organizationId, Role.BROKER);
+
+  const existing = await prisma.riskProfile.findFirst({
+    where: { id: profileId, client: { organizationId } },
+    select: { id: true, clientId: true },
+  });
+  if (!existing) {
+    throw new Error("Risk profile not found in this organization");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.riskProfile.update({
+      where: { id: profileId },
+      data: {
+        lineOfBusiness: input.lineOfBusiness,
+        attributes: input.attributes as Prisma.InputJsonValue,
+        notes: input.notes ? input.notes : null,
+      },
+    });
+
+    await recordAudit(
+      {
+        organizationId,
+        userId,
+        action: AuditAction.UPDATE,
+        entityType: "RiskProfile",
+        entityId: profileId,
+        metadata: { clientId: existing.clientId, lineOfBusiness: input.lineOfBusiness },
+      },
+      tx,
+    );
+
+    return existing;
+  });
+}
