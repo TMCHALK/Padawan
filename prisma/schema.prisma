@@ -1,0 +1,212 @@
+// Padawan data model — insurance broker platform foundation.
+//
+// PII handling: fields marked "ENCRYPTED" in comments are written/read through
+// src/lib/crypto.ts (AES-256-GCM) at the application layer, so the database only
+// ever stores ciphertext. Every read/write of client data is recorded in AuditLog.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Identity, organizations, and access control -------------------------------
+
+enum Role {
+  OWNER // full control of the org, including billing and member management
+  BROKER // can read/write client data
+  VIEWER // read-only access to client data
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String
+  memberships  Membership[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Organization {
+  id           String        @id @default(cuid())
+  name         String
+  memberships  Membership[]
+  clients      Client[]
+  integrations Integration[]
+  auditLogs    AuditLog[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// Join table giving a user a role within an organization (multi-tenant sharing).
+model Membership {
+  id             String       @id @default(cuid())
+  role           Role         @default(BROKER)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+// --- Insurance domain ----------------------------------------------------------
+
+model Client {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // ENCRYPTED PII — stored as ciphertext, decrypted only in the app layer.
+  firstNameEnc String
+  lastNameEnc  String
+  emailEnc     String?
+  phoneEnc     String?
+  addressEnc   String?
+  dobEnc       String?
+
+  // Searchable, non-sensitive metadata.
+  displayName String // e.g. "J. Smith" — safe-to-display label, not full PII
+  status      ClientStatus @default(PROSPECT)
+
+  // Optional link to the CRM system of record (HubSpot contact id).
+  hubspotContactId String?
+
+  riskProfiles RiskProfile[]
+  policies     Policy[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+}
+
+enum ClientStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+}
+
+enum RiskLineOfBusiness {
+  AUTO
+  HOME
+  PROPERTY
+  LIABILITY
+  LIFE
+  HEALTH
+  COMMERCIAL
+  OTHER
+}
+
+// Structured risk data for a client, scoped to a line of business. Core fields are
+// columns; the long tail of line-specific attributes lives in typed JSON.
+model RiskProfile {
+  id               String             @id @default(cuid())
+  clientId         String
+  client           Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lineOfBusiness   RiskLineOfBusiness
+  // Free-form but schema-validated (zod) attributes per line of business.
+  attributes       Json               @default("{}")
+  // Coarse risk score (0-100) produced by analysis; null until evaluated.
+  riskScore        Int?
+  notes            String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([clientId])
+  @@index([clientId, lineOfBusiness])
+}
+
+model Policy {
+  id             String         @id @default(cuid())
+  clientId       String
+  client         Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  carrier        String
+  policyNumber   String
+  lineOfBusiness RiskLineOfBusiness
+  premium        Decimal?       @db.Decimal(12, 2)
+  effectiveDate  DateTime?
+  expirationDate DateTime?
+  status         PolicyStatus   @default(QUOTED)
+  coverageItems  CoverageItem[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([clientId])
+}
+
+enum PolicyStatus {
+  QUOTED
+  BOUND
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+model CoverageItem {
+  id          String   @id @default(cuid())
+  policyId    String
+  policy      Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  name        String // e.g. "Bodily Injury Liability"
+  limit       Decimal? @db.Decimal(14, 2)
+  deductible  Decimal? @db.Decimal(12, 2)
+  description String?
+
+  @@index([policyId])
+}
+
+// --- Compliance & integrations -------------------------------------------------
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+}
+
+// Immutable record of access to client data. Append-only by convention.
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action         AuditAction
+  entityType     String // e.g. "Client", "RiskProfile"
+  entityId       String
+  // Optional non-sensitive context (no raw PII).
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+}
+
+enum IntegrationProvider {
+  HUBSPOT
+  GMAIL
+  GOOGLE_CALENDAR
+}
+
+// Stores per-org connection state for external integrations. Tokens are encrypted.
+model Integration {
+  id             String              @id @default(cuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       IntegrationProvider
+  // ENCRYPTED token blob (JSON) — never stored in plaintext.
+  credentialsEnc String?
+  connected      Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([organizationId, provider])
+}

@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# Safety gate for autonomous changes: every PR must pass before merge.
+jobs:
+  quality:
+    name: Lint, typecheck, unit tests
+    runs-on: ubuntu-latest
+    env:
+      # Non-sensitive CI-only values. Real secrets live in repo/environment secrets.
+      DATABASE_URL: postgresql://padawan:padawan@localhost:5432/padawan
+      AUTH_SECRET: ci-only-secret-not-used-in-production
+      PII_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://padawan:padawan@localhost:5432/padawan
+      AUTH_SECRET: ci-only-secret-not-used-in-production
+      PII_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: padawan
+          POSTGRES_PASSWORD: padawan
+          POSTGRES_DB: padawan
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U padawan"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma db push --skip-generate
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build
+      - run: npm run test:e2e
