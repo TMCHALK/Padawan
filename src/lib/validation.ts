@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ClientStatus, RiskLineOfBusiness } from "@prisma/client";
+import { ClientStatus, PolicyStatus, RiskLineOfBusiness } from "@prisma/client";
 
 // --- Auth ---------------------------------------------------------------------
 
@@ -74,4 +74,71 @@ export function parseAttributePairs(
 export function buildDisplayName(firstName: string, lastName: string): string {
   const initial = firstName.trim().charAt(0).toUpperCase();
   return `${initial}. ${lastName.trim()}`;
+}
+
+// --- Policies & coverage ------------------------------------------------------
+
+/** Human-readable labels for policy lifecycle status. */
+export const POLICY_STATUS_LABELS: Record<PolicyStatus, string> = {
+  [PolicyStatus.QUOTED]: "Quoted",
+  [PolicyStatus.BOUND]: "Bound",
+  [PolicyStatus.ACTIVE]: "Active",
+  [PolicyStatus.CANCELLED]: "Cancelled",
+  [PolicyStatus.EXPIRED]: "Expired",
+};
+
+const coverageItemSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  limit: z.string().trim().max(40).optional().or(z.literal("")),
+  deductible: z.string().trim().max(40).optional().or(z.literal("")),
+});
+
+export const policyInputSchema = z.object({
+  carrier: z.string().trim().min(1, "Carrier is required").max(160),
+  policyNumber: z.string().trim().min(1, "Policy number is required").max(120),
+  lineOfBusiness: z.nativeEnum(RiskLineOfBusiness),
+  premium: z.string().trim().max(40).optional().or(z.literal("")),
+  effectiveDate: z.string().trim().max(40).optional().or(z.literal("")),
+  expirationDate: z.string().trim().max(40).optional().or(z.literal("")),
+  status: z.nativeEnum(PolicyStatus).default(PolicyStatus.QUOTED),
+  coverages: z.array(coverageItemSchema).default([]),
+});
+export type PolicyInput = z.infer<typeof policyInputSchema>;
+
+/**
+ * Folds parallel coverage-row arrays from the form into a list, dropping rows with
+ * an empty name. Mirrors parseAttributePairs — flexible capture, no fixed schema.
+ */
+export function parseCoverageRows(
+  names: string[],
+  limits: string[],
+  deductibles: string[],
+): { name: string; limit: string; deductible: string }[] {
+  const rows: { name: string; limit: string; deductible: string }[] = [];
+  for (let i = 0; i < names.length; i++) {
+    const name = (names[i] ?? "").trim();
+    if (!name) continue;
+    rows.push({
+      name,
+      limit: (limits[i] ?? "").trim(),
+      deductible: (deductibles[i] ?? "").trim(),
+    });
+  }
+  return rows;
+}
+
+/** Parses a money string ("1,250.00", "$1250") to a numeric string, or null. */
+export function parseMoney(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const cleaned = value.replace(/[$,\s]/g, "");
+  if (cleaned === "") return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? String(n) : null;
+}
+
+/** Parses a YYYY-MM-DD (or ISO) date string to a Date, or null if invalid. */
+export function parseDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
 }

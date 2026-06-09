@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getClient } from "@/lib/clients";
 import { listRiskProfiles } from "@/lib/riskProfiles";
+import { listPolicies } from "@/lib/policies";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/session";
 import { buildSubmissionPdf } from "@/lib/pdf";
@@ -20,6 +21,7 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
   const riskProfiles = await listRiskProfiles(userId, organizationId, id);
+  const policies = await listPolicies(userId, organizationId, id);
   const org = await prisma.organization.findUnique({
     where: { id: organizationId },
     select: { name: true },
@@ -28,6 +30,7 @@ export async function GET(
   const pdf = await buildSubmissionPdf({
     client,
     riskProfiles,
+    policies,
     organizationName: org?.name ?? "Padawan",
     generatedBy: email,
   });
