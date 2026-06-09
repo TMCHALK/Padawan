@@ -13,11 +13,15 @@ a populated **Risk Submission Summary PDF**.
   data** (per line of business) **and policies + coverage line items** → click
   **"Download submission PDF"** → get a paginated PDF built from that client's
   stored, encrypted records (applicant, risk profiles, and policies/coverages).
-- Also working: create a client, **edit** a client + change status, search the
-  list, and an **owner-only `/audit` page** showing who accessed what.
+- Each client page shows a **descriptive portfolio summary** (counts + total
+  premium — data only, explicitly not an adequacy assessment).
+- **Full CRUD on the data layer:** create + edit a client (and status), create +
+  **edit** risk profiles, create + **edit** policies/coverage. Searchable client
+  list. **Owner-only `/audit` page** showing who accessed what.
 - All client PII is encrypted at rest; every read/write is in the audit log.
-- 31 unit tests + Playwright e2e + lint + typecheck pass in CI; the whole thing
-  was also verified against a live database and a running server overnight.
+- 42 unit tests + Playwright e2e + lint + typecheck pass in CI; the core loop was
+  also verified against a live database and a running server overnight (the
+  generated PDF was hex-decoded to confirm it contains the real captured data).
 
 ## Try it yourself (≈2 minutes)
 ```bash
@@ -71,10 +75,14 @@ Then in the browser:
   should follow a specific **ACORD form layout** (needs the real form
   templates/licensing).
 
-## Recommended next when you're back
-Good next slices: **Policy + coverage line-item capture** (makes the submission
-PDF richer and enables a real coverage *data* summary), then the **HubSpot contact
-sync**. Say the word and I'll continue.
+## Recommended next when you're back (pick any; I'll run with it)
+1. **HubSpot contact sync** — needs your go (pushes client PII to HubSpot) + an
+   access token. HubSpot is already connected in this environment.
+2. **Delete** a risk profile / policy (with confirm) — easy, just wanted a human
+   in the loop for data removal.
+3. **Quote import (CSV) + comparison view** — the next big capability toward the
+   full vision; I'd want your eyes on the approach first.
+4. **ACORD-form-shaped PDF** — needs the real form templates/licensing from you.
 
 ---
 
@@ -92,12 +100,18 @@ Integration/default branch: `claude/insurance-broker-tool-gj29y7` (no `main`).
 | 4 | **Risk Submission Summary PDF — first end-to-end output** | ✅ merged (PR #5) |
 | 5 | Policy + coverage capture (richer submission PDF) | ✅ merged (PR #6) |
 | 6 | Edit an existing risk profile | ✅ merged (PR #7) |
+| 7 | Descriptive portfolio summary | ✅ merged (PR #8) |
+| 8 | Edit an existing policy (policy CRUD complete) | ✅ merged (PR #9) |
 
-## In progress
-- Continuing with safe, descriptive backlog slices (portfolio data summary, then
-  delete capability) if time permits overnight; each lands as its own CI-gated PR
-  and is noted here. HubSpot/Gmail sync is intentionally NOT being done
-  autonomously (see "Blocked — needs Tyler").
+## Where I stopped (and why)
+I paused initiating new features after PR #9. Everything above is merged on the
+main branch with green CI — **no open PRs to review.** I stopped here on purpose:
+the remaining backlog is either **destructive** (delete risk profile/policy —
+I didn't want to land data-removal unreviewed while you slept), **needs your
+input** (HubSpot/Gmail sync = pushing PII externally; ACORD form layout = real
+templates/licensing), or is **larger work worth your review** (quote import +
+comparison). I'd rather hand you a clean, verified state than pad the night with
+risky or judgment-dependent changes. Say the word and I'll pick any of these up.
 
 ## Notes on orchestration
 - Phases were built on the main thread and via parallel worktree-isolated
