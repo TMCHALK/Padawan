@@ -165,9 +165,17 @@ export default async function ClientDetailPage({
                   <span className="font-medium">
                     {policy.carrier} · {policy.policyNumber}
                   </span>
-                  <span className="text-xs uppercase tracking-wide text-white/50">
-                    {POLICY_STATUS_LABELS[policy.status]}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs uppercase tracking-wide text-white/50">
+                      {POLICY_STATUS_LABELS[policy.status]}
+                    </span>
+                    <Link
+                      href={`/clients/${client.id}/policy/${policy.id}/edit`}
+                      className="text-xs text-indigo-300 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </div>
                 </div>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   <div className="contents">

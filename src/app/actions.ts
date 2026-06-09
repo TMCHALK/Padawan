@@ -6,7 +6,7 @@ import { signIn } from "@/lib/auth";
 import { registerUserAndOrg, SignUpError } from "@/lib/accounts";
 import { createClient, updateClient } from "@/lib/clients";
 import { createRiskProfile, updateRiskProfile } from "@/lib/riskProfiles";
-import { createPolicy } from "@/lib/policies";
+import { createPolicy, updatePolicy } from "@/lib/policies";
 import { requireSession } from "@/lib/session";
 import {
   clientInputSchema,
@@ -254,4 +254,47 @@ export async function createPolicyAction(
 
   revalidatePath(`/clients/${clientId}`);
   return {};
+}
+
+/** Updates an existing policy (and its coverage items), then redirects to the client. */
+export async function updatePolicyAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const policyId = formData.get("policyId");
+  if (typeof policyId !== "string" || !policyId) {
+    return { error: "Missing policy reference" };
+  }
+
+  const coverages = parseCoverageRows(
+    formData.getAll("covName").map(String),
+    formData.getAll("covLimit").map(String),
+    formData.getAll("covDeductible").map(String),
+  );
+
+  const parsed = policyInputSchema.safeParse({
+    carrier: formData.get("carrier"),
+    policyNumber: formData.get("policyNumber"),
+    lineOfBusiness: formData.get("lineOfBusiness"),
+    premium: formData.get("premium") || "",
+    effectiveDate: formData.get("effectiveDate") || "",
+    expirationDate: formData.get("expirationDate") || "",
+    status: formData.get("status") || undefined,
+    coverages,
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  let clientId: string;
+  try {
+    ({ clientId } = await updatePolicy(userId, organizationId, policyId, parsed.data));
+  } catch {
+    return { error: "Could not update policy. Please try again." };
+  }
+
+  revalidatePath(`/clients/${clientId}`);
+  redirect(`/clients/${clientId}`);
 }

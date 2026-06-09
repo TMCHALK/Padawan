@@ -138,3 +138,103 @@ export async function createPolicy(
     return policy;
   });
 }
+
+/** Fetches a single policy (org-scoped via its client), recording a READ. */
+export async function getPolicy(
+  userId: string,
+  organizationId: string,
+  policyId: string,
+): Promise<(PolicyView & { clientId: string }) | null> {
+  await requireOrgRole(userId, organizationId, Role.VIEWER);
+
+  const p = await prisma.policy.findFirst({
+    where: { id: policyId, client: { organizationId } },
+    include: { coverageItems: true },
+  });
+  if (!p) return null;
+
+  await recordAudit({
+    organizationId,
+    userId,
+    action: AuditAction.READ,
+    entityType: "Policy",
+    entityId: p.id,
+  });
+
+  return {
+    id: p.id,
+    carrier: p.carrier,
+    policyNumber: p.policyNumber,
+    lineOfBusiness: p.lineOfBusiness,
+    premium: p.premium ? p.premium.toString() : null,
+    effectiveDate: p.effectiveDate,
+    expirationDate: p.expirationDate,
+    status: p.status,
+    coverageItems: p.coverageItems.map((c) => ({
+      id: c.id,
+      name: c.name,
+      limit: c.limit ? c.limit.toString() : null,
+      deductible: c.deductible ? c.deductible.toString() : null,
+      description: c.description,
+    })),
+    clientId: p.clientId,
+  };
+}
+
+/**
+ * Updates a policy and replaces its coverage line items (the form sends the full
+ * desired set), writing an UPDATE audit atomically.
+ */
+export async function updatePolicy(
+  userId: string,
+  organizationId: string,
+  policyId: string,
+  input: PolicyInput,
+): Promise<{ id: string; clientId: string }> {
+  await requireOrgRole(userId, organizationId, Role.BROKER);
+
+  const existing = await prisma.policy.findFirst({
+    where: { id: policyId, client: { organizationId } },
+    select: { id: true, clientId: true },
+  });
+  if (!existing) {
+    throw new Error("Policy not found in this organization");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.coverageItem.deleteMany({ where: { policyId } });
+    await tx.policy.update({
+      where: { id: policyId },
+      data: {
+        carrier: input.carrier,
+        policyNumber: input.policyNumber,
+        lineOfBusiness: input.lineOfBusiness,
+        premium: parseMoney(input.premium),
+        effectiveDate: parseDate(input.effectiveDate),
+        expirationDate: parseDate(input.expirationDate),
+        status: input.status,
+        coverageItems: {
+          create: input.coverages.map((c) => ({
+            name: c.name,
+            limit: parseMoney(c.limit),
+            deductible: parseMoney(c.deductible),
+          })),
+        },
+      },
+    });
+
+    await recordAudit(
+      {
+        organizationId,
+        userId,
+        action: AuditAction.UPDATE,
+        entityType: "Policy",
+        entityId: policyId,
+        metadata: { clientId: existing.clientId, lineOfBusiness: input.lineOfBusiness },
+      },
+      tx,
+    );
+
+    return existing;
+  });
+}

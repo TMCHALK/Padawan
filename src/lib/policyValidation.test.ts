@@ -58,4 +58,15 @@ describe("policyInputSchema", () => {
     expect(result.success).toBe(true);
     if (result.success) expect(result.data.status).toBe(PolicyStatus.QUOTED);
   });
+
+  it("accepts an empty coverage list (clearing all coverage on edit)", () => {
+    const result = policyInputSchema.safeParse({
+      carrier: "Acme",
+      policyNumber: "P1",
+      lineOfBusiness: RiskLineOfBusiness.HOME,
+      status: PolicyStatus.ACTIVE,
+      coverages: [],
+    });
+    expect(result.success).toBe(true);
+  });
 });
