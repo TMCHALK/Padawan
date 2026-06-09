@@ -10,8 +10,9 @@ a populated **Risk Submission Summary PDF**.
 
 ## What works now
 - Sign in → see your client list → open a client → capture structured **risk
-  data** (per line of business) → click **"Download submission PDF"** → get a
-  paginated PDF built from that client's stored, encrypted records.
+  data** (per line of business) **and policies + coverage line items** → click
+  **"Download submission PDF"** → get a paginated PDF built from that client's
+  stored, encrypted records (applicant, risk profiles, and policies/coverages).
 - Also working: create a client, **edit** a client + change status, search the
   list, and an **owner-only `/audit` page** showing who accessed what.
 - All client PII is encrypted at rest; every read/write is in the audit log.
@@ -35,9 +36,11 @@ npm run dev                 # http://localhost:3000
 Then in the browser:
 1. Sign in with **demo@padawan.local** / **password123**.
 2. Open **A. Lovelace** (already has a sample auto risk profile).
-3. Click **"Download submission PDF"** → you get the populated PDF.
+3. Click **"Download submission PDF"** → you get the populated PDF (it now
+   includes a sample policy + coverage too).
 4. To do the full loop yourself: **New client** → open it → add a risk profile
-   (line of business + attributes) → **Download submission PDF**.
+   (line of business + attributes) and/or a **policy** (carrier, premium, dates,
+   coverage line items) → **Download submission PDF**.
 
 > A sample of the generated PDF is attached to this morning's message.
 
@@ -60,10 +63,13 @@ Then in the browser:
 ## Blocked — needs Tyler
 - _Nothing is blocking._ I did not hit the E&O line, spend money, or send any
   external message, so I kept moving without stopping.
-- Decisions awaiting your eventual call (not blocking tonight's work): whether the
-  submission PDF should follow a specific **ACORD form layout** (needs the real
-  form templates/licensing), and whether to wire the **HubSpot/Gmail** sync that's
-  already connected in this environment. Both are queued in `BACKLOG.md`.
+- **HubSpot/Gmail sync — deliberately left for you.** I did NOT wire it overnight:
+  it would push client **PII to an external system** and needs an access token,
+  which crosses the "external data / your call" guardrail. The hooks are easy to
+  add once you say go; it's queued in `BACKLOG.md`.
+- Decision awaiting your eventual call (not blocking): whether the submission PDF
+  should follow a specific **ACORD form layout** (needs the real form
+  templates/licensing).
 
 ## Recommended next when you're back
 Good next slices: **Policy + coverage line-item capture** (makes the submission
@@ -84,11 +90,13 @@ Integration/default branch: `claude/insurance-broker-tool-gj29y7` (no `main`).
 | 2 | Risk-profile capture | ✅ merged (PR #1) |
 | 3 | Edit & status-change client | ✅ merged (PR #4) |
 | 4 | **Risk Submission Summary PDF — first end-to-end output** | ✅ merged (PR #5) |
+| 5 | Policy + coverage capture (richer submission PDF) | ✅ merged (PR #6) |
 
 ## In progress
-- Continuing with the next backlog slice (Policy + coverage capture) if time
-  permits overnight; any further work lands as its own CI-gated PR and is noted
-  here.
+- Continuing with the next safe backlog slice (e.g. edit existing risk profile)
+  if time permits overnight; any further work lands as its own CI-gated PR and is
+  noted here. HubSpot/Gmail sync is intentionally NOT being done autonomously
+  (see "Blocked — needs Tyler").
 
 ## Notes on orchestration
 - Phases were built on the main thread and via parallel worktree-isolated
