@@ -136,3 +136,53 @@ export async function createClient(
 
   return created;
 }
+
+/** Updates a client: re-encrypts PII, sets status, writes an UPDATE audit entry atomically. */
+export async function updateClient(
+  userId: string,
+  organizationId: string,
+  clientId: string,
+  input: ClientInput,
+): Promise<{ id: string }> {
+  await requireOrgRole(userId, organizationId, Role.BROKER);
+
+  const existing = await prisma.client.findFirst({
+    where: { id: clientId, organizationId },
+    select: { id: true },
+  });
+  if (!existing) {
+    throw new Error("Client not found");
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const client = await tx.client.update({
+      where: { id: clientId },
+      data: {
+        firstNameEnc: encrypt(input.firstName),
+        lastNameEnc: encrypt(input.lastName),
+        emailEnc: encryptOptional(input.email),
+        phoneEnc: encryptOptional(input.phone),
+        addressEnc: encryptOptional(input.address),
+        dobEnc: encryptOptional(input.dob),
+        displayName: buildDisplayName(input.firstName, input.lastName),
+        status: input.status,
+      },
+      select: { id: true },
+    });
+
+    await recordAudit(
+      {
+        organizationId,
+        userId,
+        action: AuditAction.UPDATE,
+        entityType: "Client",
+        entityId: client.id,
+      },
+      tx,
+    );
+
+    return client;
+  });
+
+  return updated;
+}

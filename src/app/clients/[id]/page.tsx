@@ -33,9 +33,17 @@ export default async function ClientDetailPage({
         <h1 className="text-2xl font-semibold">
           {client.firstName} {client.lastName}
         </h1>
-        <span className="text-xs uppercase tracking-wide text-white/50">
-          {client.status}
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs uppercase tracking-wide text-white/50">
+            {client.status}
+          </span>
+          <Link
+            href={`/clients/${client.id}/edit`}
+            className="text-sm text-indigo-300 hover:underline"
+          >
+            Edit
+          </Link>
+        </div>
       </div>
 
       <dl>
