@@ -276,16 +276,32 @@ export interface PipelineSummary {
   open: number;
   /** Count of deals in each stage (all stages present, zero-filled). */
   countByStage: Record<PipelineStage, number>;
+  /** Summed estimated value of deals in each stage (all stages present, zero-filled). */
+  valueByStage: Record<PipelineStage, number>;
+  /** Total estimated value of open deals (everything except WON / LOST). */
+  openValue: number;
   /** Deals carrying a Gmail-raised outcome suggestion the broker hasn't confirmed. */
   pendingSuggestions: number;
 }
 
+/** Coerces a stored Decimal-as-string (or number) deal amount to a finite number. */
+function toAmount(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /**
- * Pure, descriptive roll-up of the pipeline — counts only, no revenue. Tells Tyler
- * "what's in flight and where", which is the whole ask.
+ * Pure, descriptive roll-up of the pipeline — counts and summed value per stage (the
+ * "total qualified / quoting / proposed / won …" numbers). Estimated open-pipeline
+ * sizing, not booked revenue: it tells Tyler "what's in flight, where, and how big".
  */
 export function summarizePipeline(
-  deals: { stage: PipelineStage; suggestedStage: PipelineStage | null }[],
+  deals: {
+    stage: PipelineStage;
+    suggestedStage: PipelineStage | null;
+    amount?: string | number | null;
+  }[],
 ): PipelineSummary {
   const countByStage = PIPELINE_STAGE_ORDER.reduce(
     (acc, stage) => {
@@ -294,14 +310,34 @@ export function summarizePipeline(
     },
     {} as Record<PipelineStage, number>,
   );
+  const valueByStage = PIPELINE_STAGE_ORDER.reduce(
+    (acc, stage) => {
+      acc[stage] = 0;
+      return acc;
+    },
+    {} as Record<PipelineStage, number>,
+  );
 
   let open = 0;
+  let openValue = 0;
   let pendingSuggestions = 0;
   for (const deal of deals) {
+    const amount = toAmount(deal.amount);
     countByStage[deal.stage] += 1;
-    if (!isClosedStage(deal.stage)) open += 1;
+    valueByStage[deal.stage] += amount;
+    if (!isClosedStage(deal.stage)) {
+      open += 1;
+      openValue += amount;
+    }
     if (deal.suggestedStage) pendingSuggestions += 1;
   }
 
-  return { total: deals.length, open, countByStage, pendingSuggestions };
+  return {
+    total: deals.length,
+    open,
+    countByStage,
+    valueByStage,
+    openValue,
+    pendingSuggestions,
+  };
 }

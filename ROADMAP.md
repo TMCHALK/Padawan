@@ -25,11 +25,12 @@ attach communications to client records. (HubSpot/Gmail are already connected vi
 this environment's MCP servers — build the in-app OAuth equivalents.)
 
 **Shipped early:** a **sales pipeline tracker** (`/pipeline`) that "mostly auto-updates
-through Gmail". Deals move through qualified → quoting → proposed → won / lost / circle
-back; the connector auto-advances in-progress stages and *suggests* outcomes (the broker
-confirms — placement decisions stay human). It tracks composition only, no revenue. The
-ingestion seam (`POST /api/pipeline/gmail-sync`) is connector-driven today; the in-app
-Gmail OAuth poller will call the same path. See `docs/PIPELINE_GMAIL.md`.
+through Gmail". A drag-and-drop board moves deals through qualified → quoting → proposed
+→ won / lost / circle back, with deal value / probability / next action and a summed
+value per stage (open-pipeline sizing, not booked revenue). The connector auto-advances
+in-progress stages and *suggests* outcomes (the broker confirms — placement decisions
+stay human). The ingestion seam (`POST /api/pipeline/gmail-sync`) is connector-driven
+today; the in-app Gmail OAuth poller will call the same path. See `docs/PIPELINE_GMAIL.md`.
 
 ## Phase 4 — Quote comparison
 Normalize carrier quotes into a side-by-side comparison. Start with manual / CSV

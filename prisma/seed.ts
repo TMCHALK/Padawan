@@ -77,15 +77,18 @@ async function main() {
       }
     }
 
-    // Synthetic sales-pipeline deals, demonstrating each stage and the Gmail-driven
-    // activity fields. No revenue is tracked — only where each deal sits. The
-    // suggestedStage on the "circle back?" deal shows a Gmail-raised outcome the
-    // broker would confirm; it is never auto-set.
+    // Synthetic sales-pipeline deals, demonstrating each stage, estimated value /
+    // probability / next action, and the Gmail-driven activity fields. `amount` is
+    // open-pipeline sizing, not booked revenue. The suggestedStage on the proposed
+    // deal shows a Gmail-raised outcome the broker would confirm; it is never auto-set.
     const days = (n: number) => new Date(Date.now() - n * 86_400_000);
     const SYNTHETIC_DEALS = [
       {
         name: "Lovelace Auto — new business",
         stage: PipelineStage.QUOTING,
+        amount: "8500",
+        probability: 50,
+        nextAction: "Send revised quote; follow up Friday.",
         email: "ada@example.com",
         clientId: createdClients[0]?.id ?? null,
         gmailThreadId: "thread-ada-001",
@@ -96,6 +99,9 @@ async function main() {
       {
         name: "Hopper Homeowners — renewal",
         stage: PipelineStage.PROPOSED,
+        amount: "12000",
+        probability: 75,
+        nextAction: "Confirm bind + effective date with client.",
         email: "grace@example.com",
         clientId: createdClients[1]?.id ?? null,
         gmailThreadId: "thread-grace-001",
@@ -106,6 +112,9 @@ async function main() {
       {
         name: "Turing Umbrella — qualified lead",
         stage: PipelineStage.QUALIFIED,
+        amount: "4000",
+        probability: 30,
+        nextAction: "Collect prior carrier docs.",
         email: "alan@example.com",
         clientId: createdClients[2]?.id ?? null,
         gmailThreadId: null,
@@ -116,6 +125,9 @@ async function main() {
       {
         name: "Babbage Manufacturing — GL",
         stage: PipelineStage.WON,
+        amount: "26000",
+        probability: 100,
+        nextAction: "Issue policy documents.",
         email: "charles@example.com",
         clientId: null,
         gmailThreadId: "thread-babbage-001",
@@ -126,6 +138,9 @@ async function main() {
       {
         name: "Nightingale Clinic — package",
         stage: PipelineStage.LOST,
+        amount: "18000",
+        probability: 0,
+        nextAction: "Lost to incumbent — note reason.",
         email: "flo@example.com",
         clientId: null,
         gmailThreadId: "thread-flo-001",
@@ -136,6 +151,9 @@ async function main() {
       {
         name: "Shannon Cyber — prospect",
         stage: PipelineStage.CIRCLE_BACK,
+        amount: "9000",
+        probability: 20,
+        nextAction: "Revisit at renewal (Q1).",
         email: "claude@example.com",
         clientId: null,
         gmailThreadId: "thread-shannon-001",
@@ -152,6 +170,9 @@ async function main() {
           clientId: d.clientId,
           name: d.name,
           stage: d.stage,
+          amount: d.amount,
+          probability: d.probability,
+          nextAction: d.nextAction,
           counterpartyEmailEnc: encryptOptional(d.email),
           counterpartyEmailHash: hashEmailOptional(d.email),
           gmailThreadId: d.gmailThreadId,

@@ -229,28 +229,37 @@ describe("applyEmailActivity — outcomes are suggested, never auto-set", () => 
 });
 
 describe("summarizePipeline", () => {
-  it("counts totals, open deals, per-stage, and pending suggestions — no revenue", () => {
+  it("counts totals, open deals, per-stage, value per stage, and pending suggestions", () => {
     const summary = summarizePipeline([
-      { stage: PipelineStage.QUALIFIED, suggestedStage: null },
-      { stage: PipelineStage.QUOTING, suggestedStage: null },
-      { stage: PipelineStage.PROPOSED, suggestedStage: PipelineStage.WON },
-      { stage: PipelineStage.WON, suggestedStage: null },
-      { stage: PipelineStage.LOST, suggestedStage: null },
-      { stage: PipelineStage.CIRCLE_BACK, suggestedStage: null },
+      { stage: PipelineStage.QUALIFIED, suggestedStage: null, amount: "1000" },
+      { stage: PipelineStage.QUALIFIED, suggestedStage: null, amount: "500" },
+      { stage: PipelineStage.QUOTING, suggestedStage: null, amount: "2000" },
+      { stage: PipelineStage.PROPOSED, suggestedStage: PipelineStage.WON, amount: "3000" },
+      { stage: PipelineStage.WON, suggestedStage: null, amount: "9999" },
+      { stage: PipelineStage.LOST, suggestedStage: null, amount: "4444" },
+      { stage: PipelineStage.CIRCLE_BACK, suggestedStage: null, amount: null },
     ]);
 
-    expect(summary.total).toBe(6);
-    expect(summary.open).toBe(4); // all but WON + LOST
+    expect(summary.total).toBe(7);
+    expect(summary.open).toBe(5); // all but WON + LOST
     expect(summary.pendingSuggestions).toBe(1);
-    expect(summary.countByStage[PipelineStage.QUALIFIED]).toBe(1);
-    expect(summary.countByStage[PipelineStage.WON]).toBe(1);
-    expect(summary).not.toHaveProperty("totalPremium");
+    expect(summary.countByStage[PipelineStage.QUALIFIED]).toBe(2);
+    expect(summary.valueByStage[PipelineStage.QUALIFIED]).toBe(1500);
+    expect(summary.valueByStage[PipelineStage.QUOTING]).toBe(2000);
+    expect(summary.valueByStage[PipelineStage.WON]).toBe(9999);
+    // open value excludes WON (9999) and LOST (4444): 1500 + 2000 + 3000 + 0
+    expect(summary.openValue).toBe(6500);
   });
 
-  it("zero-fills every stage for an empty pipeline", () => {
-    const summary = summarizePipeline([]);
-    expect(summary.total).toBe(0);
-    expect(summary.open).toBe(0);
-    expect(summary.countByStage[PipelineStage.PROPOSED]).toBe(0);
+  it("treats missing/garbage amounts as zero and zero-fills empty pipelines", () => {
+    const summary = summarizePipeline([
+      { stage: PipelineStage.QUOTING, suggestedStage: null, amount: "not-a-number" },
+    ]);
+    expect(summary.valueByStage[PipelineStage.QUOTING]).toBe(0);
+
+    const empty = summarizePipeline([]);
+    expect(empty.total).toBe(0);
+    expect(empty.openValue).toBe(0);
+    expect(empty.valueByStage[PipelineStage.PROPOSED]).toBe(0);
   });
 });

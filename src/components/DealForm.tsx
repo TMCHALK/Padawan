@@ -35,7 +35,7 @@ export function DealForm({ clients }: { clients: DealClientOption[] }) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label className={labelClass} htmlFor="stage">
             Stage
@@ -55,18 +55,56 @@ export function DealForm({ clients }: { clients: DealClientOption[] }) {
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="clientId">
-            Linked client (optional)
+          <label className={labelClass} htmlFor="amount">
+            Estimated value
           </label>
-          <select className={inputClass} id="clientId" name="clientId" defaultValue="">
-            <option value="">— Not linked yet —</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.displayName}
-              </option>
-            ))}
-          </select>
+          <input
+            className={inputClass}
+            id="amount"
+            name="amount"
+            inputMode="decimal"
+            placeholder="$10,000"
+          />
         </div>
+
+        <div>
+          <label className={labelClass} htmlFor="probability">
+            Probability %
+          </label>
+          <input
+            className={inputClass}
+            id="probability"
+            name="probability"
+            inputMode="numeric"
+            placeholder="50"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="nextAction">
+          Next action
+        </label>
+        <input
+          className={inputClass}
+          id="nextAction"
+          name="nextAction"
+          placeholder="e.g. Follow up to bind; confirm effective date"
+        />
+      </div>
+
+      <div>
+        <label className={labelClass} htmlFor="clientId">
+          Linked client (optional)
+        </label>
+        <select className={inputClass} id="clientId" name="clientId" defaultValue="">
+          <option value="">— Not linked yet —</option>
+          {clients.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.displayName}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

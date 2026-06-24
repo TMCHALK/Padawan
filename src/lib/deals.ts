@@ -9,7 +9,13 @@ import {
   hashEmailOptional,
 } from "@/lib/crypto";
 import { applyEmailActivity, type EmailEvent } from "@/lib/pipeline";
-import { parseDate, type DealInput, type GmailEventInput } from "@/lib/validation";
+import {
+  parseDate,
+  parseMoney,
+  parseProbability,
+  type DealInput,
+  type GmailEventInput,
+} from "@/lib/validation";
 
 /**
  * Service layer for sales-pipeline deals. Like the other services, every function
@@ -26,6 +32,9 @@ export interface DealListItem {
   id: string;
   name: string;
   stage: PipelineStage;
+  amount: string | null;
+  probability: number | null;
+  nextAction: string | null;
   clientId: string | null;
   clientDisplayName: string | null;
   gmailThreadId: string | null;
@@ -70,6 +79,9 @@ export async function listDeals(
       id: true,
       name: true,
       stage: true,
+      amount: true,
+      probability: true,
+      nextAction: true,
       clientId: true,
       client: { select: { displayName: true } },
       gmailThreadId: true,
@@ -86,6 +98,9 @@ export async function listDeals(
     id: r.id,
     name: r.name,
     stage: r.stage,
+    amount: r.amount ? r.amount.toString() : null,
+    probability: r.probability,
+    nextAction: r.nextAction,
     clientId: r.clientId,
     clientDisplayName: r.client?.displayName ?? null,
     gmailThreadId: r.gmailThreadId,
@@ -122,6 +137,9 @@ export async function getDeal(
     id: deal.id,
     name: deal.name,
     stage: deal.stage,
+    amount: deal.amount ? deal.amount.toString() : null,
+    probability: deal.probability,
+    nextAction: deal.nextAction,
     clientId: deal.clientId,
     clientDisplayName: deal.client?.displayName ?? null,
     counterpartyEmail: decryptOptional(deal.counterpartyEmailEnc),
@@ -158,6 +176,9 @@ export async function createDeal(
         clientId,
         name: input.name,
         stage: input.stage,
+        amount: parseMoney(input.amount),
+        probability: parseProbability(input.probability),
+        nextAction: input.nextAction ? input.nextAction : null,
         counterpartyEmailEnc: encryptOptional(email),
         counterpartyEmailHash: hashEmailOptional(email),
         notes: input.notes ? input.notes : null,

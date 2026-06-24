@@ -1,5 +1,6 @@
 "use server";
 
+import { PipelineStage } from "@prisma/client";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { signIn } from "@/lib/auth";
@@ -312,6 +313,9 @@ export async function createDealAction(
   const parsed = dealInputSchema.safeParse({
     name: formData.get("name"),
     stage: formData.get("stage") || undefined,
+    amount: formData.get("amount") || "",
+    probability: formData.get("probability") || "",
+    nextAction: formData.get("nextAction") || "",
     clientId: formData.get("clientId") || "",
     counterpartyEmail: formData.get("counterpartyEmail") || "",
     notes: formData.get("notes") || "",
@@ -328,6 +332,25 @@ export async function createDealAction(
 
   revalidatePath("/pipeline");
   return {};
+}
+
+/**
+ * Moves a deal to a stage by id — the drag-and-drop entry point on the board. Returns
+ * a simple ok/error object so the client can revert an optimistic move on failure.
+ */
+export async function moveDealStage(
+  dealId: string,
+  stage: PipelineStage,
+): Promise<{ ok: boolean }> {
+  const { userId, organizationId } = await requireSession();
+  try {
+    await updateDealStage(userId, organizationId, dealId, stage);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { ok: false };
+  }
+  revalidatePath("/pipeline");
+  return { ok: true };
 }
 
 /** Moves a deal to a new stage (manual move, or confirming a Gmail suggestion). */

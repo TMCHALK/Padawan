@@ -198,6 +198,13 @@ model Deal {
   name  String
   stage PipelineStage @default(QUALIFIED)
 
+  // Estimated size of the opportunity, for open-pipeline sizing (sum per stage) — NOT
+  // booked revenue. `probability` is a rough 0-100 likelihood of closing. Both optional.
+  amount      Decimal? @db.Decimal(12, 2)
+  probability Int?
+  // The single most important next step — shown on the card front.
+  nextAction  String?
+
   // Counterparty contact, used to match inbound Gmail to this deal. The address is
   // PII so it is stored ENCRYPTED for display; a separate keyed HMAC fingerprint
   // (never reversible to the address) is what we index and match on.

@@ -24,8 +24,9 @@ ship in one loop iteration. Move completed items to the bottom and check them of
 
 ## Done
 - [x] **Sales pipeline tracker** — `Deal` model + `PipelineStage` (qualified, quoting,
-      proposed, won, lost, circle back); board at `/pipeline` grouped by stage with
-      descriptive counts (no revenue). Gmail ingestion seam (`POST
+      proposed, won, lost, circle back); drag-and-drop board at `/pipeline` with deal
+      value / probability / next action, and a summed value + count per stage (open-
+      pipeline sizing, not booked revenue). Gmail ingestion seam (`POST
       /api/pipeline/gmail-sync` → audited `ingestGmailEvents`) with a pure, tested rules
       engine that auto-advances in-progress stages and *suggests* (never auto-sets)
       outcomes. Counterparty email stored encrypted + keyed-HMAC fingerprint for
