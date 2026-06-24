@@ -37,6 +37,7 @@ model Organization {
   name         String
   memberships  Membership[]
   clients      Client[]
+  deals        Deal[]
   integrations Integration[]
   auditLogs    AuditLog[]
   createdAt    DateTime      @default(now())
@@ -81,6 +82,7 @@ model Client {
 
   riskProfiles RiskProfile[]
   policies     Policy[]
+  deals        Deal[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -161,6 +163,63 @@ model CoverageItem {
   description String?
 
   @@index([policyId])
+}
+
+// --- Sales pipeline ------------------------------------------------------------
+
+// Where a placement opportunity sits. Ordered roughly by progression, but WON /
+// LOST / CIRCLE_BACK are outcomes, not steps. The Gmail connector may auto-advance
+// the early in-progress stages (QUALIFIED -> QUOTING -> PROPOSED) from detected
+// email activity, but it never decides an outcome — those are surfaced as a
+// suggestion for the broker to confirm (see src/lib/pipeline.ts). This keeps the
+// system on the right side of the "move data, don't make placement decisions" line.
+enum PipelineStage {
+  QUALIFIED
+  QUOTING
+  PROPOSED
+  WON
+  LOST
+  CIRCLE_BACK
+}
+
+// A single placement opportunity tracked through the pipeline. Deliberately stores
+// NO revenue/premium — the pipeline answers "what's in flight and where", not "how
+// much money". A deal can stand alone (a fresh Gmail prospect) or link to a Client.
+model Deal {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Optional link to a full client record. Null for a not-yet-entered prospect.
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  // Safe-to-display deal label, e.g. "Acme GL — new business". Not full PII.
+  name  String
+  stage PipelineStage @default(QUALIFIED)
+
+  // Counterparty contact, used to match inbound Gmail to this deal. The address is
+  // PII so it is stored ENCRYPTED for display; a separate keyed HMAC fingerprint
+  // (never reversible to the address) is what we index and match on.
+  counterpartyEmailEnc  String?
+  counterpartyEmailHash String?
+
+  // Gmail linkage + activity. These are auto-maintained by the connector ingestion
+  // path; lastSignal is the most recent detected email signal (e.g. "proposal_sent")
+  // and suggestedStage is an outcome the broker has not yet confirmed (null = none).
+  gmailThreadId  String?
+  lastActivityAt DateTime?
+  lastSignal     String?
+  suggestedStage PipelineStage?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([organizationId, stage])
+  @@index([counterpartyEmailHash])
+  @@index([gmailThreadId])
 }
 
 // --- Compliance & integrations -------------------------------------------------

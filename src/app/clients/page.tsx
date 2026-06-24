@@ -19,6 +19,12 @@ export default async function ClientsPage({
         <h1 className="text-2xl font-semibold">Clients</h1>
         <div className="flex items-center gap-3">
           <Link
+            href="/pipeline"
+            className="rounded-md border border-white/10 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/5"
+          >
+            Pipeline
+          </Link>
+          <Link
             href="/audit"
             className="rounded-md border border-white/10 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/5"
           >

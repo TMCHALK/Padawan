@@ -1,6 +1,7 @@
 import {
   createCipheriv,
   createDecipheriv,
+  createHmac,
   randomBytes,
 } from "node:crypto";
 
@@ -73,4 +74,27 @@ export function encryptOptional(value: string | null | undefined): string | null
 export function decryptOptional(value: string | null | undefined): string | null {
   if (value === null || value === undefined || value === "") return null;
   return decrypt(value);
+}
+
+/**
+ * Deterministic, keyed fingerprint of an email address for *matching* — not for
+ * display. `encrypt()` is non-deterministic (random IV) so two ciphertexts of the
+ * same address differ, which is correct for storage but useless for "find the deal
+ * whose counterparty is this sender". This HMAC gives a stable, indexable token
+ * that the same address always maps to, while staying irreversible: the raw address
+ * still lives only in its `*Enc` ciphertext. Normalizes case + surrounding space so
+ * "Alice@Example.com " and "alice@example.com" match.
+ *
+ * Keyed with the PII key so the fingerprints are not portable across deployments and
+ * a leaked database cannot be dictionary-attacked without also holding the key.
+ */
+export function hashEmail(email: string): string {
+  const normalized = email.trim().toLowerCase();
+  return createHmac("sha256", getKey()).update(normalized).digest("base64");
+}
+
+/** Convenience: fingerprints only when an address is present. */
+export function hashEmailOptional(value: string | null | undefined): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  return hashEmail(value);
 }

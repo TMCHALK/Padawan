@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { ClientStatus, PolicyStatus, RiskLineOfBusiness } from "@prisma/client";
+import {
+  ClientStatus,
+  PipelineStage,
+  PolicyStatus,
+  RiskLineOfBusiness,
+} from "@prisma/client";
 
 // --- Auth ---------------------------------------------------------------------
 
@@ -142,3 +147,58 @@ export function parseDate(value: string | null | undefined): Date | null {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+// --- Sales pipeline -----------------------------------------------------------
+
+/**
+ * Deal intake. Deliberately captures NO premium/revenue — the pipeline tracks
+ * "what's in flight and where", not money. `clientId` is optional so a fresh Gmail
+ * prospect can be tracked before being entered as a full client; `counterpartyEmail`
+ * is what the Gmail connector matches inbound mail against.
+ */
+export const dealInputSchema = z.object({
+  name: z.string().trim().min(1, "Deal name is required").max(200),
+  stage: z.nativeEnum(PipelineStage).default(PipelineStage.QUALIFIED),
+  clientId: z.string().trim().min(1).max(40).optional().or(z.literal("")),
+  counterpartyEmail: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email("Enter a valid email")
+    .optional()
+    .or(z.literal("")),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+});
+export type DealInput = z.infer<typeof dealInputSchema>;
+
+/** A single stage transition (manual move, or confirming a Gmail suggestion). */
+export const dealStageSchema = z.object({
+  stage: z.nativeEnum(PipelineStage),
+});
+
+/**
+ * One inbound email event for the Gmail ingestion seam. The connector (or, later,
+ * the in-app Gmail OAuth poller) posts a batch of these; the pipeline engine folds
+ * each into the matching deal. No message body/PII beyond the snippet is required.
+ */
+export const gmailEventSchema = z.object({
+  /** Gmail thread id — the primary key we match a deal on. */
+  threadId: z.string().trim().min(1).max(120),
+  /** Counterparty address (the other party on the thread), used as a fallback match. */
+  from: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email()
+    .optional()
+    .or(z.literal("")),
+  subject: z.string().trim().max(1000).optional().or(z.literal("")),
+  snippet: z.string().trim().max(2000).optional().or(z.literal("")),
+  /** ISO timestamp of the message; defaults to now if absent/unparseable. */
+  occurredAt: z.string().trim().max(40).optional().or(z.literal("")),
+});
+export type GmailEventInput = z.infer<typeof gmailEventSchema>;
+
+export const gmailSyncSchema = z.object({
+  events: z.array(gmailEventSchema).max(500),
+});

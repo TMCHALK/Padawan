@@ -1,6 +1,6 @@
-import { PrismaClient, RiskLineOfBusiness, Role } from "@prisma/client";
+import { PipelineStage, PrismaClient, RiskLineOfBusiness, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { encrypt, encryptOptional } from "../src/lib/crypto";
+import { encrypt, encryptOptional, hashEmailOptional } from "../src/lib/crypto";
 import { buildDisplayName } from "../src/lib/validation";
 
 /**
@@ -43,6 +43,7 @@ async function main() {
 
   const existing = await prisma.client.count({ where: { organizationId: org.id } });
   if (existing === 0) {
+    const createdClients: { id: string; displayName: string }[] = [];
     for (const [i, c] of SYNTHETIC_CLIENTS.entries()) {
       const client = await prisma.client.create({
         data: {
@@ -54,6 +55,7 @@ async function main() {
           displayName: buildDisplayName(c.firstName, c.lastName),
         },
       });
+      createdClients.push({ id: client.id, displayName: client.displayName });
 
       // Give the first client a sample risk profile so the end-to-end loop
       // (capture risk data -> download submission PDF) is demonstrable on a
@@ -74,9 +76,96 @@ async function main() {
         });
       }
     }
+
+    // Synthetic sales-pipeline deals, demonstrating each stage and the Gmail-driven
+    // activity fields. No revenue is tracked — only where each deal sits. The
+    // suggestedStage on the "circle back?" deal shows a Gmail-raised outcome the
+    // broker would confirm; it is never auto-set.
+    const days = (n: number) => new Date(Date.now() - n * 86_400_000);
+    const SYNTHETIC_DEALS = [
+      {
+        name: "Lovelace Auto — new business",
+        stage: PipelineStage.QUOTING,
+        email: "ada@example.com",
+        clientId: createdClients[0]?.id ?? null,
+        gmailThreadId: "thread-ada-001",
+        lastActivityAt: days(1),
+        lastSignal: "quote_sent",
+        suggestedStage: null,
+      },
+      {
+        name: "Hopper Homeowners — renewal",
+        stage: PipelineStage.PROPOSED,
+        email: "grace@example.com",
+        clientId: createdClients[1]?.id ?? null,
+        gmailThreadId: "thread-grace-001",
+        lastActivityAt: days(3),
+        lastSignal: "proposal_sent",
+        suggestedStage: PipelineStage.WON,
+      },
+      {
+        name: "Turing Umbrella — qualified lead",
+        stage: PipelineStage.QUALIFIED,
+        email: "alan@example.com",
+        clientId: createdClients[2]?.id ?? null,
+        gmailThreadId: null,
+        lastActivityAt: days(6),
+        lastSignal: null,
+        suggestedStage: null,
+      },
+      {
+        name: "Babbage Manufacturing — GL",
+        stage: PipelineStage.WON,
+        email: "charles@example.com",
+        clientId: null,
+        gmailThreadId: "thread-babbage-001",
+        lastActivityAt: days(10),
+        lastSignal: "won",
+        suggestedStage: null,
+      },
+      {
+        name: "Nightingale Clinic — package",
+        stage: PipelineStage.LOST,
+        email: "flo@example.com",
+        clientId: null,
+        gmailThreadId: "thread-flo-001",
+        lastActivityAt: days(20),
+        lastSignal: "lost",
+        suggestedStage: null,
+      },
+      {
+        name: "Shannon Cyber — prospect",
+        stage: PipelineStage.CIRCLE_BACK,
+        email: "claude@example.com",
+        clientId: null,
+        gmailThreadId: "thread-shannon-001",
+        lastActivityAt: days(45),
+        lastSignal: "circle_back",
+        suggestedStage: null,
+      },
+    ];
+
+    for (const d of SYNTHETIC_DEALS) {
+      await prisma.deal.create({
+        data: {
+          organizationId: org.id,
+          clientId: d.clientId,
+          name: d.name,
+          stage: d.stage,
+          counterpartyEmailEnc: encryptOptional(d.email),
+          counterpartyEmailHash: hashEmailOptional(d.email),
+          gmailThreadId: d.gmailThreadId,
+          lastActivityAt: d.lastActivityAt,
+          lastSignal: d.lastSignal,
+          suggestedStage: d.suggestedStage,
+        },
+      });
+    }
   }
 
-  console.log("Seeded demo org, owner (demo@padawan.local / password123), and clients.");
+  console.log(
+    "Seeded demo org, owner (demo@padawan.local / password123), clients, and pipeline deals.",
+  );
 }
 
 main()

@@ -7,9 +7,12 @@ import { registerUserAndOrg, SignUpError } from "@/lib/accounts";
 import { createClient, updateClient } from "@/lib/clients";
 import { createRiskProfile, updateRiskProfile } from "@/lib/riskProfiles";
 import { createPolicy, updatePolicy } from "@/lib/policies";
+import { createDeal, updateDealStage } from "@/lib/deals";
 import { requireSession } from "@/lib/session";
 import {
   clientInputSchema,
+  dealInputSchema,
+  dealStageSchema,
   parseAttributePairs,
   parseCoverageRows,
   policyInputSchema,
@@ -297,4 +300,60 @@ export async function updatePolicyAction(
 
   revalidatePath(`/clients/${clientId}`);
   redirect(`/clients/${clientId}`);
+}
+
+/** Adds a deal to the sales pipeline, then refreshes the board. */
+export async function createDealAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const parsed = dealInputSchema.safeParse({
+    name: formData.get("name"),
+    stage: formData.get("stage") || undefined,
+    clientId: formData.get("clientId") || "",
+    counterpartyEmail: formData.get("counterpartyEmail") || "",
+    notes: formData.get("notes") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await createDeal(userId, organizationId, parsed.data);
+  } catch {
+    return { error: "Could not save deal. Please try again." };
+  }
+
+  revalidatePath("/pipeline");
+  return {};
+}
+
+/** Moves a deal to a new stage (manual move, or confirming a Gmail suggestion). */
+export async function updateDealStageAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const dealId = formData.get("dealId");
+  if (typeof dealId !== "string" || !dealId) {
+    return { error: "Missing deal reference" };
+  }
+
+  const parsed = dealStageSchema.safeParse({ stage: formData.get("stage") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid stage" };
+  }
+
+  try {
+    await updateDealStage(userId, organizationId, dealId, parsed.data.stage);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { error: "Could not update the deal. Please try again." };
+  }
+
+  revalidatePath("/pipeline");
+  return {};
 }
