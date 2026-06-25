@@ -21,14 +21,15 @@ const STAGE_CHIP: Record<PipelineStage, string> = {
   [PipelineStage.CIRCLE_BACK]: "bg-white/10 text-white/60",
 };
 
-function money(value: string | null): string {
-  if (!value) return "";
-  const n = Number(value);
-  return Number.isFinite(n) ? `$${n.toLocaleString()}` : "";
+function money(value: number | string | null): string {
+  if (value === null || value === "") return "";
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? `$${Math.round(n).toLocaleString()}` : "";
 }
 
+/** Column header total = summed revenue (commission) of the deals in the column. */
 function columnTotal(deals: DealListItem[]): string {
-  const sum = deals.reduce((acc, d) => acc + (Number(d.amount) || 0), 0);
+  const sum = deals.reduce((acc, d) => acc + (d.revenue || 0), 0);
   return `$${sum.toLocaleString()}`;
 }
 
@@ -132,16 +133,29 @@ export function PipelineBoard({ initialDeals }: { initialDeals: DealListItem[] }
                     <div className="line-clamp-2 text-sm font-medium leading-tight">
                       {deal.name}
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      {deal.amount ? (
+                    <div className="mt-1 flex items-baseline gap-2">
+                      {deal.revenue > 0 ? (
                         <span className="text-sm font-semibold text-emerald-300">
-                          {money(deal.amount)}
+                          {money(deal.revenue)} rev
                         </span>
                       ) : null}
                       {deal.probability !== null ? (
-                        <span className="text-xs text-white/40">{deal.probability}%</span>
+                        <span
+                          className="text-xs text-white/40"
+                          title="Likelihood to close"
+                        >
+                          {deal.probability}%
+                        </span>
                       ) : null}
                     </div>
+                    {deal.premium ? (
+                      <div className="text-[11px] text-white/35">
+                        {money(deal.premium)} premium
+                        {deal.commissionRate !== null
+                          ? ` · ${deal.commissionRate}% comm`
+                          : ""}
+                      </div>
+                    ) : null}
                     {deal.nextAction ? (
                       <p className="mt-1 line-clamp-1 text-xs text-white/55">
                         {deal.nextAction}

@@ -28,10 +28,11 @@ async function main() {
     create: {
       id: "seed-org",
       name: "Demo Brokerage",
-      // Example revenue targets so the "how we stand" view has something to show.
-      monthlyRevenueGoal: "20000",
-      quarterlyRevenueGoal: "50000",
-      annualRevenueGoal: "200000",
+      // Example revenue (commission) targets so the "how we stand" view has something
+      // to show. Revenue-scale, not premium-scale (commissions are a fraction of premium).
+      monthlyRevenueGoal: "5000",
+      quarterlyRevenueGoal: "15000",
+      annualRevenueGoal: "60000",
     },
   });
 
@@ -92,7 +93,8 @@ async function main() {
     const SYNTHETIC_DEALS: {
       name: string;
       stage: PipelineStage;
-      amount: string;
+      premium: string;
+      commissionRate: number; // % — revenue is premium × this
       probability: number;
       nextAction: string;
       wonAt?: Date | null;
@@ -106,7 +108,8 @@ async function main() {
       {
         name: "Lovelace Auto — new business",
         stage: PipelineStage.QUOTING,
-        amount: "8500",
+        premium: "8500",
+        commissionRate: 12, // → $1,020 revenue
         probability: 50,
         nextAction: "Send revised quote; follow up Friday.",
         email: "ada@example.com",
@@ -119,7 +122,8 @@ async function main() {
       {
         name: "Hopper Homeowners — renewal",
         stage: PipelineStage.PROPOSED,
-        amount: "12000",
+        premium: "12000",
+        commissionRate: 15, // → $1,800 revenue
         probability: 75,
         nextAction: "Confirm bind + effective date with client.",
         email: "grace@example.com",
@@ -132,7 +136,8 @@ async function main() {
       {
         name: "Turing Umbrella — qualified lead",
         stage: PipelineStage.QUALIFIED,
-        amount: "4000",
+        premium: "4000",
+        commissionRate: 15, // → $600 revenue
         probability: 30,
         nextAction: "Collect prior carrier docs.",
         email: "alan@example.com",
@@ -145,7 +150,8 @@ async function main() {
       {
         name: "Babbage Manufacturing — GL",
         stage: PipelineStage.WON,
-        amount: "26000",
+        premium: "26000",
+        commissionRate: 12, // → $3,120 revenue
         probability: 100,
         nextAction: "Issue policy documents.",
         wonAt: days(10), // won this month, so it counts toward the goals
@@ -159,7 +165,8 @@ async function main() {
       {
         name: "Nightingale Clinic — package",
         stage: PipelineStage.LOST,
-        amount: "18000",
+        premium: "18000",
+        commissionRate: 10, // → $1,800 revenue
         probability: 0,
         nextAction: "Lost to incumbent — note reason.",
         email: "flo@example.com",
@@ -172,7 +179,8 @@ async function main() {
       {
         name: "Shannon Cyber — prospect",
         stage: PipelineStage.CIRCLE_BACK,
-        amount: "9000",
+        premium: "9000",
+        commissionRate: 20, // → $1,800 revenue
         probability: 20,
         nextAction: "Revisit at renewal (Q1).",
         email: "claude@example.com",
@@ -191,7 +199,8 @@ async function main() {
           clientId: d.clientId,
           name: d.name,
           stage: d.stage,
-          amount: d.amount,
+          premium: d.premium,
+          commissionRate: d.commissionRate,
           probability: d.probability,
           nextAction: d.nextAction,
           wonAt: d.wonAt ?? null,

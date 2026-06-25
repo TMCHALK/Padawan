@@ -8,11 +8,12 @@ import {
   hashEmail,
   hashEmailOptional,
 } from "@/lib/crypto";
-import { applyEmailActivity, type EmailEvent } from "@/lib/pipeline";
+import { applyEmailActivity, dealRevenue, type EmailEvent } from "@/lib/pipeline";
 import {
   parseDate,
   parseMoney,
   parseProbability,
+  parseRate,
   type DealInput,
   type GmailEventInput,
 } from "@/lib/validation";
@@ -32,7 +33,10 @@ export interface DealListItem {
   id: string;
   name: string;
   stage: PipelineStage;
-  amount: string | null;
+  premium: string | null;
+  commissionRate: number | null;
+  /** Derived broker commission = premium × commissionRate% (whole dollars). The key figure. */
+  revenue: number;
   probability: number | null;
   nextAction: string | null;
   clientId: string | null;
@@ -79,7 +83,8 @@ export async function listDeals(
       id: true,
       name: true,
       stage: true,
-      amount: true,
+      premium: true,
+      commissionRate: true,
       probability: true,
       nextAction: true,
       clientId: true,
@@ -94,21 +99,27 @@ export async function listDeals(
     take: 500,
   });
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    stage: r.stage,
-    amount: r.amount ? r.amount.toString() : null,
-    probability: r.probability,
-    nextAction: r.nextAction,
-    clientId: r.clientId,
-    clientDisplayName: r.client?.displayName ?? null,
-    gmailThreadId: r.gmailThreadId,
-    lastActivityAt: r.lastActivityAt,
-    lastSignal: r.lastSignal,
-    suggestedStage: r.suggestedStage,
-    createdAt: r.createdAt,
-  }));
+  return rows.map((r) => {
+    const premium = r.premium ? r.premium.toString() : null;
+    const commissionRate = r.commissionRate ? Number(r.commissionRate) : null;
+    return {
+      id: r.id,
+      name: r.name,
+      stage: r.stage,
+      premium,
+      commissionRate,
+      revenue: dealRevenue(premium, commissionRate),
+      probability: r.probability,
+      nextAction: r.nextAction,
+      clientId: r.clientId,
+      clientDisplayName: r.client?.displayName ?? null,
+      gmailThreadId: r.gmailThreadId,
+      lastActivityAt: r.lastActivityAt,
+      lastSignal: r.lastSignal,
+      suggestedStage: r.suggestedStage,
+      createdAt: r.createdAt,
+    };
+  });
 }
 
 /** Fetches one deal, decrypting the counterparty email and recording a READ. */
@@ -133,11 +144,15 @@ export async function getDeal(
     entityId: deal.id,
   });
 
+  const premium = deal.premium ? deal.premium.toString() : null;
+  const commissionRate = deal.commissionRate ? Number(deal.commissionRate) : null;
   return {
     id: deal.id,
     name: deal.name,
     stage: deal.stage,
-    amount: deal.amount ? deal.amount.toString() : null,
+    premium,
+    commissionRate,
+    revenue: dealRevenue(premium, commissionRate),
     probability: deal.probability,
     nextAction: deal.nextAction,
     clientId: deal.clientId,
@@ -176,7 +191,8 @@ export async function createDeal(
         clientId,
         name: input.name,
         stage: input.stage,
-        amount: parseMoney(input.amount),
+        premium: parseMoney(input.premium),
+        commissionRate: parseRate(input.commissionRate),
         probability: parseProbability(input.probability),
         nextAction: input.nextAction ? input.nextAction : null,
         counterpartyEmailEnc: encryptOptional(email),

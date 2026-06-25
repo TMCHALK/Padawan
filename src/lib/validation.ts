@@ -159,9 +159,11 @@ export function parseDate(value: string | null | undefined): Date | null {
 export const dealInputSchema = z.object({
   name: z.string().trim().min(1, "Deal name is required").max(200),
   stage: z.nativeEnum(PipelineStage).default(PipelineStage.QUALIFIED),
-  // Estimated opportunity value and rough close probability — both free-text on the
-  // form, normalized in the service (parseMoney / parseProbability).
-  amount: z.string().trim().max(40).optional().or(z.literal("")),
+  // Premium (what the client pays the carrier) and the broker commission rate %. Revenue
+  // is derived from these. Plus a rough close probability. All free-text on the form,
+  // normalized in the service (parseMoney / parseRate / parseProbability).
+  premium: z.string().trim().max(40).optional().or(z.literal("")),
+  commissionRate: z.string().trim().max(8).optional().or(z.literal("")),
   probability: z.string().trim().max(8).optional().or(z.literal("")),
   nextAction: z.string().trim().max(400).optional().or(z.literal("")),
   clientId: z.string().trim().min(1).max(40).optional().or(z.literal("")),
@@ -182,6 +184,14 @@ export function parseProbability(value: string | null | undefined): number | nul
   const n = Number(value.replace(/[%\s]/g, ""));
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+/** Parses a commission-rate string ("12", "12.5%") to a clamped 0-100 number (2dp), or null. */
+export function parseRate(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const n = Number(value.replace(/[%\s]/g, ""));
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n * 100) / 100));
 }
 
 /** A single stage transition (manual move, or confirming a Gmail suggestion). */

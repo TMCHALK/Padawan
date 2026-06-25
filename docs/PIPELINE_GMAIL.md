@@ -1,11 +1,12 @@
 # Sales pipeline + Gmail auto-update
 
-The pipeline tracks **what's in flight, where, and how big**. Each deal carries an
-estimated value, a rough close probability, and a next action, and sits in one stage.
-The board is a drag-and-drop kanban; each column shows its deal count and the **summed
-value** of the deals in it ("total qualified / quoting / proposed / won …"). The value
-is **open-pipeline sizing, not booked revenue** — it answers "how much is in play",
-deliberately not won/lost revenue accounting. Stages:
+The pipeline tracks **what's in flight, where, and how big**. Each deal carries a
+**premium** (what the client pays the carrier), a **commission %**, a rough close
+probability, and a next action, and sits in one stage. **Revenue = premium ×
+commission %** is the broker's commission — the key figure tracked everywhere; premium
+is incidental. The board is a drag-and-drop kanban; each column shows its deal count and
+the **summed revenue** of the deals in it ("total qualified / quoting / proposed / won
+…"). Revenue goals (below) compare won revenue per period to a target. Stages:
 
 | Stage         | Meaning                                              | Auto-set by Gmail?        |
 | ------------- | ---------------------------------------------------- | ------------------------- |

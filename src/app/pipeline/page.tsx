@@ -34,9 +34,9 @@ export default async function PipelinePage() {
 
       <section className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Open pipeline", value: money(summary.openValue) },
+          { label: "Open pipeline revenue", value: money(summary.openRevenue) },
           { label: "Open deals", value: String(summary.open) },
-          { label: "Won", value: money(summary.valueByStage.WON) },
+          { label: "Won revenue", value: money(summary.revenueByStage.WON) },
           { label: "Gmail suggestions", value: String(summary.pendingSuggestions) },
         ].map((stat) => (
           <div key={stat.label} className="rounded-md border border-white/10 p-3">
@@ -48,10 +48,10 @@ export default async function PipelinePage() {
         ))}
       </section>
       <p className="mb-8 text-xs text-white/40">
-        Open-pipeline sizing — estimated value of deals in flight, not booked revenue.
-        Drag a card between columns to move a deal. Gmail activity auto-advances
-        in-progress stages; won / lost / circle back are surfaced as suggestions you
-        confirm.
+        Revenue = your commission (premium × commission %); column totals and goals track
+        revenue, not premium. Drag a card between columns to move a deal. Gmail activity
+        auto-advances in-progress stages; won / lost / circle back are surfaced as
+        suggestions you confirm.
       </p>
 
       <GoalsPanel goals={goalsView.goals} progress={goalsView.progress} />

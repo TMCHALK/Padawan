@@ -315,7 +315,8 @@ export async function createDealAction(
   const parsed = dealInputSchema.safeParse({
     name: formData.get("name"),
     stage: formData.get("stage") || undefined,
-    amount: formData.get("amount") || "",
+    premium: formData.get("premium") || "",
+    commissionRate: formData.get("commissionRate") || "",
     probability: formData.get("probability") || "",
     nextAction: formData.get("nextAction") || "",
     clientId: formData.get("clientId") || "",

@@ -2,7 +2,7 @@ import { AuditAction, PipelineStage, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { requireOrgRole } from "@/lib/rbac";
-import { summarizeGoals, type GoalsSummary } from "@/lib/pipeline";
+import { dealRevenue, summarizeGoals, type GoalsSummary } from "@/lib/pipeline";
 import { parseMoney, type GoalsInput } from "@/lib/validation";
 
 /**
@@ -48,10 +48,14 @@ export async function getGoalsView(
 
   const wonRows = await prisma.deal.findMany({
     where: { organizationId, stage: PipelineStage.WON, wonAt: { not: null } },
-    select: { amount: true, wonAt: true },
+    select: { premium: true, commissionRate: true, wonAt: true },
   });
+  // Goals track revenue (commission), so each won deal contributes premium × rate%.
   const wonDeals = wonRows.map((r) => ({
-    amount: r.amount ? Number(r.amount) : 0,
+    amount: dealRevenue(
+      r.premium ? r.premium.toString() : null,
+      r.commissionRate ? Number(r.commissionRate) : null,
+    ),
     wonAt: r.wonAt as Date,
   }));
 

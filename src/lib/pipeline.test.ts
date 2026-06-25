@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PipelineStage } from "@prisma/client";
 import {
   applyEmailActivity,
+  dealRevenue,
   detectSignal,
   isClosedStage,
   isInProgressStage,
@@ -229,39 +230,54 @@ describe("applyEmailActivity — outcomes are suggested, never auto-set", () => 
   });
 });
 
+describe("dealRevenue", () => {
+  it("computes premium × commission% rounded to whole dollars", () => {
+    expect(dealRevenue("10000", "12")).toBe(1200);
+    expect(dealRevenue(8500, 12)).toBe(1020);
+    expect(dealRevenue("10000", "12.5")).toBe(1250);
+    expect(dealRevenue("1000", "12.34")).toBe(123); // 123.4 -> 123
+  });
+
+  it("returns 0 when premium or rate is missing/garbage", () => {
+    expect(dealRevenue(null, 12)).toBe(0);
+    expect(dealRevenue("10000", null)).toBe(0);
+    expect(dealRevenue("abc", "12")).toBe(0);
+  });
+});
+
 describe("summarizePipeline", () => {
-  it("counts totals, open deals, per-stage, value per stage, and pending suggestions", () => {
+  it("counts totals, open deals, per-stage, revenue per stage, and pending suggestions", () => {
     const summary = summarizePipeline([
-      { stage: PipelineStage.QUALIFIED, suggestedStage: null, amount: "1000" },
-      { stage: PipelineStage.QUALIFIED, suggestedStage: null, amount: "500" },
-      { stage: PipelineStage.QUOTING, suggestedStage: null, amount: "2000" },
-      { stage: PipelineStage.PROPOSED, suggestedStage: PipelineStage.WON, amount: "3000" },
-      { stage: PipelineStage.WON, suggestedStage: null, amount: "9999" },
-      { stage: PipelineStage.LOST, suggestedStage: null, amount: "4444" },
-      { stage: PipelineStage.CIRCLE_BACK, suggestedStage: null, amount: null },
+      { stage: PipelineStage.QUALIFIED, suggestedStage: null, revenue: 1000 },
+      { stage: PipelineStage.QUALIFIED, suggestedStage: null, revenue: 500 },
+      { stage: PipelineStage.QUOTING, suggestedStage: null, revenue: 2000 },
+      { stage: PipelineStage.PROPOSED, suggestedStage: PipelineStage.WON, revenue: 3000 },
+      { stage: PipelineStage.WON, suggestedStage: null, revenue: 9999 },
+      { stage: PipelineStage.LOST, suggestedStage: null, revenue: 4444 },
+      { stage: PipelineStage.CIRCLE_BACK, suggestedStage: null, revenue: null },
     ]);
 
     expect(summary.total).toBe(7);
     expect(summary.open).toBe(5); // all but WON + LOST
     expect(summary.pendingSuggestions).toBe(1);
     expect(summary.countByStage[PipelineStage.QUALIFIED]).toBe(2);
-    expect(summary.valueByStage[PipelineStage.QUALIFIED]).toBe(1500);
-    expect(summary.valueByStage[PipelineStage.QUOTING]).toBe(2000);
-    expect(summary.valueByStage[PipelineStage.WON]).toBe(9999);
-    // open value excludes WON (9999) and LOST (4444): 1500 + 2000 + 3000 + 0
-    expect(summary.openValue).toBe(6500);
+    expect(summary.revenueByStage[PipelineStage.QUALIFIED]).toBe(1500);
+    expect(summary.revenueByStage[PipelineStage.QUOTING]).toBe(2000);
+    expect(summary.revenueByStage[PipelineStage.WON]).toBe(9999);
+    // open revenue excludes WON (9999) and LOST (4444): 1500 + 2000 + 3000 + 0
+    expect(summary.openRevenue).toBe(6500);
   });
 
-  it("treats missing/garbage amounts as zero and zero-fills empty pipelines", () => {
+  it("treats missing/garbage revenue as zero and zero-fills empty pipelines", () => {
     const summary = summarizePipeline([
-      { stage: PipelineStage.QUOTING, suggestedStage: null, amount: "not-a-number" },
+      { stage: PipelineStage.QUOTING, suggestedStage: null, revenue: "not-a-number" },
     ]);
-    expect(summary.valueByStage[PipelineStage.QUOTING]).toBe(0);
+    expect(summary.revenueByStage[PipelineStage.QUOTING]).toBe(0);
 
     const empty = summarizePipeline([]);
     expect(empty.total).toBe(0);
-    expect(empty.openValue).toBe(0);
-    expect(empty.valueByStage[PipelineStage.PROPOSED]).toBe(0);
+    expect(empty.openRevenue).toBe(0);
+    expect(empty.revenueByStage[PipelineStage.PROPOSED]).toBe(0);
   });
 });
 

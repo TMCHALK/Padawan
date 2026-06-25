@@ -276,15 +276,15 @@ export interface PipelineSummary {
   open: number;
   /** Count of deals in each stage (all stages present, zero-filled). */
   countByStage: Record<PipelineStage, number>;
-  /** Summed estimated value of deals in each stage (all stages present, zero-filled). */
-  valueByStage: Record<PipelineStage, number>;
-  /** Total estimated value of open deals (everything except WON / LOST). */
-  openValue: number;
+  /** Summed revenue (commission) of deals in each stage (all stages, zero-filled). */
+  revenueByStage: Record<PipelineStage, number>;
+  /** Total revenue of open deals (everything except WON / LOST). */
+  openRevenue: number;
   /** Deals carrying a Gmail-raised outcome suggestion the broker hasn't confirmed. */
   pendingSuggestions: number;
 }
 
-/** Coerces a stored Decimal-as-string (or number) deal amount to a finite number. */
+/** Coerces a stored Decimal-as-string (or number) to a finite number, else 0. */
 function toAmount(value: string | number | null | undefined): number {
   if (value === null || value === undefined) return 0;
   const n = typeof value === "number" ? value : Number(value);
@@ -292,15 +292,27 @@ function toAmount(value: string | number | null | undefined): number {
 }
 
 /**
- * Pure, descriptive roll-up of the pipeline — counts and summed value per stage (the
- * "total qualified / quoting / proposed / won …" numbers). Estimated open-pipeline
- * sizing, not booked revenue: it tells Tyler "what's in flight, where, and how big".
+ * Broker revenue (commission) for a deal: premium × commissionRate%, rounded to whole
+ * dollars. This — not premium — is the key figure tracked in totals and goals. Missing
+ * premium or rate yields 0.
+ */
+export function dealRevenue(
+  premium: string | number | null | undefined,
+  commissionRate: string | number | null | undefined,
+): number {
+  return Math.round((toAmount(premium) * toAmount(commissionRate)) / 100);
+}
+
+/**
+ * Pure, descriptive roll-up of the pipeline — counts and summed *revenue* per stage (the
+ * "total qualified / quoting / proposed / won …" numbers). Revenue is the broker's
+ * commission (premium × rate), the figure that actually matters; premium is incidental.
  */
 export function summarizePipeline(
   deals: {
     stage: PipelineStage;
     suggestedStage: PipelineStage | null;
-    amount?: string | number | null;
+    revenue?: string | number | null;
   }[],
 ): PipelineSummary {
   const countByStage = PIPELINE_STAGE_ORDER.reduce(
@@ -310,7 +322,7 @@ export function summarizePipeline(
     },
     {} as Record<PipelineStage, number>,
   );
-  const valueByStage = PIPELINE_STAGE_ORDER.reduce(
+  const revenueByStage = PIPELINE_STAGE_ORDER.reduce(
     (acc, stage) => {
       acc[stage] = 0;
       return acc;
@@ -319,15 +331,15 @@ export function summarizePipeline(
   );
 
   let open = 0;
-  let openValue = 0;
+  let openRevenue = 0;
   let pendingSuggestions = 0;
   for (const deal of deals) {
-    const amount = toAmount(deal.amount);
+    const revenue = toAmount(deal.revenue);
     countByStage[deal.stage] += 1;
-    valueByStage[deal.stage] += amount;
+    revenueByStage[deal.stage] += revenue;
     if (!isClosedStage(deal.stage)) {
       open += 1;
-      openValue += amount;
+      openRevenue += revenue;
     }
     if (deal.suggestedStage) pendingSuggestions += 1;
   }
@@ -336,8 +348,8 @@ export function summarizePipeline(
     total: deals.length,
     open,
     countByStage,
-    valueByStage,
-    openValue,
+    revenueByStage,
+    openRevenue,
     pendingSuggestions,
   };
 }

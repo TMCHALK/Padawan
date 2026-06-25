@@ -1,9 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { PipelineStage } from "@prisma/client";
 import { createDealAction, type FormState } from "@/app/actions";
-import { PIPELINE_STAGE_ORDER, PIPELINE_STAGE_LABELS } from "@/lib/pipeline";
+import {
+  PIPELINE_STAGE_ORDER,
+  PIPELINE_STAGE_LABELS,
+  dealRevenue,
+} from "@/lib/pipeline";
 import { SubmitButton } from "@/components/SubmitButton";
 
 const initial: FormState = {};
@@ -19,6 +23,13 @@ export interface DealClientOption {
 
 export function DealForm({ clients }: { clients: DealClientOption[] }) {
   const [state, action] = useActionState(createDealAction, initial);
+  // Live revenue preview as premium / commission are typed.
+  const [premium, setPremium] = useState("");
+  const [commission, setCommission] = useState("");
+  const revenue = dealRevenue(
+    premium.replace(/[$,\s]/g, ""),
+    commission.replace(/[%\s]/g, ""),
+  );
 
   return (
     <form action={action} className="space-y-4 rounded-md border border-white/10 p-4">
@@ -55,18 +66,37 @@ export function DealForm({ clients }: { clients: DealClientOption[] }) {
         </div>
 
         <div>
-          <label className={labelClass} htmlFor="amount">
-            Estimated value
+          <label className={labelClass} htmlFor="premium">
+            Premium
           </label>
           <input
             className={inputClass}
-            id="amount"
-            name="amount"
+            id="premium"
+            name="premium"
             inputMode="decimal"
             placeholder="$10,000"
+            value={premium}
+            onChange={(e) => setPremium(e.target.value)}
           />
         </div>
 
+        <div>
+          <label className={labelClass} htmlFor="commissionRate">
+            Commission %
+          </label>
+          <input
+            className={inputClass}
+            id="commissionRate"
+            name="commissionRate"
+            inputMode="decimal"
+            placeholder="12.5"
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
           <label className={labelClass} htmlFor="probability">
             Probability %
@@ -78,6 +108,15 @@ export function DealForm({ clients }: { clients: DealClientOption[] }) {
             inputMode="numeric"
             placeholder="50"
           />
+        </div>
+        <div className="sm:col-span-2">
+          <span className={labelClass}>Revenue (your commission)</span>
+          <div className="rounded-md border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-sm font-semibold text-emerald-300">
+            {revenue > 0 ? `$${revenue.toLocaleString()}` : "—"}
+            <span className="ml-2 font-normal text-white/40">
+              = premium × commission %
+            </span>
+          </div>
         </div>
       </div>
 
