@@ -215,3 +215,11 @@ export type GmailEventInput = z.infer<typeof gmailEventSchema>;
 export const gmailSyncSchema = z.object({
   events: z.array(gmailEventSchema).max(500),
 });
+
+/** Adjustable revenue targets — free-text money fields, normalized via parseMoney. */
+export const goalsInputSchema = z.object({
+  monthly: z.string().trim().max(40).optional().or(z.literal("")),
+  quarterly: z.string().trim().max(40).optional().or(z.literal("")),
+  annual: z.string().trim().max(40).optional().or(z.literal("")),
+});
+export type GoalsInput = z.infer<typeof goalsInputSchema>;

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { listDeals } from "@/lib/deals";
 import { listClients } from "@/lib/clients";
+import { getGoalsView } from "@/lib/goals";
 import { requireSession } from "@/lib/session";
 import { summarizePipeline } from "@/lib/pipeline";
 import { DealForm } from "@/components/DealForm";
+import { GoalsPanel } from "@/components/GoalsPanel";
 import { PipelineBoard } from "@/components/PipelineBoard";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +16,10 @@ function money(n: number): string {
 
 export default async function PipelinePage() {
   const { userId, organizationId } = await requireSession();
-  const [deals, clients] = await Promise.all([
+  const [deals, clients, goalsView] = await Promise.all([
     listDeals(userId, organizationId),
     listClients(userId, organizationId),
+    getGoalsView(userId, organizationId),
   ]);
   const summary = summarizePipeline(deals);
 
@@ -45,11 +48,13 @@ export default async function PipelinePage() {
         ))}
       </section>
       <p className="mb-8 text-xs text-white/40">
-        Open-pipeline sizing only — estimated value of deals in flight, not booked
-        revenue. Drag a card between columns to move a deal. Gmail activity auto-advances
+        Open-pipeline sizing — estimated value of deals in flight, not booked revenue.
+        Drag a card between columns to move a deal. Gmail activity auto-advances
         in-progress stages; won / lost / circle back are surfaced as suggestions you
         confirm.
       </p>
+
+      <GoalsPanel goals={goalsView.goals} progress={goalsView.progress} />
 
       <PipelineBoard initialDeals={deals} />
 

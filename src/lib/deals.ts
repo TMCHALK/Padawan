@@ -1,4 +1,4 @@
-import { AuditAction, type PipelineStage, Role } from "@prisma/client";
+import { AuditAction, PipelineStage, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/audit";
 import { requireOrgRole } from "@/lib/rbac";
@@ -221,10 +221,19 @@ export async function updateDealStage(
   });
   if (!existing) throw new Error("Deal not found in this organization");
 
+  // Stamp wonAt when a deal enters WON; clear it if it leaves WON. This drives the
+  // revenue-goal progress (won revenue is bucketed by wonAt). Other moves leave it.
+  const wonAtChange =
+    stage === PipelineStage.WON && existing.stage !== PipelineStage.WON
+      ? { wonAt: new Date() }
+      : stage !== PipelineStage.WON && existing.stage === PipelineStage.WON
+        ? { wonAt: null }
+        : {};
+
   return prisma.$transaction(async (tx) => {
     await tx.deal.update({
       where: { id: dealId },
-      data: { stage, suggestedStage: null },
+      data: { stage, suggestedStage: null, ...wonAtChange },
     });
 
     await recordAudit(

@@ -35,6 +35,11 @@ model User {
 model Organization {
   id           String        @id @default(cuid())
   name         String
+  // Adjustable revenue targets used by the pipeline's "how we stand" view. Compared
+  // against won revenue in the current month / quarter / year. Optional (null = unset).
+  monthlyRevenueGoal   Decimal? @db.Decimal(12, 2)
+  quarterlyRevenueGoal Decimal? @db.Decimal(12, 2)
+  annualRevenueGoal    Decimal? @db.Decimal(12, 2)
   memberships  Membership[]
   clients      Client[]
   deals        Deal[]
@@ -204,6 +209,9 @@ model Deal {
   probability Int?
   // The single most important next step — shown on the card front.
   nextAction  String?
+  // When the deal was marked WON (set on the transition into WON, cleared if moved
+  // back out). Drives the revenue-goal progress, bucketed by month / quarter / year.
+  wonAt       DateTime?
 
   // Counterparty contact, used to match inbound Gmail to this deal. The address is
   // PII so it is stored ENCRYPTED for display; a separate keyed HMAC fingerprint

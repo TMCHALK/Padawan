@@ -81,7 +81,7 @@ export function PipelineBoard({ initialDeals }: { initialDeals: DealListItem[] }
             }}
             onDragLeave={() => setOverStage((s) => (s === stage ? null : s))}
             onDrop={() => onDrop(stage)}
-            className={`flex w-72 shrink-0 flex-col rounded-lg border p-3 transition-colors ${
+            className={`flex w-56 shrink-0 flex-col rounded-lg border p-2.5 transition-colors ${
               isOver
                 ? "border-indigo-400/60 bg-indigo-400/5"
                 : isClosedStage(stage)
@@ -97,46 +97,57 @@ export function PipelineBoard({ initialDeals }: { initialDeals: DealListItem[] }
               </span>
               <span className="text-xs text-white/40">{stageDeals.length}</span>
             </div>
-            <div className="mb-3 text-sm font-semibold text-white/80">
+            <div className="mb-2 text-sm font-semibold text-white/80">
               {columnTotal(stageDeals)}
             </div>
 
-            <div className="flex-1 space-y-3">
+            <div className="flex-1 space-y-2">
               {stageDeals.length === 0 ? (
-                <p className="rounded-md border border-dashed border-white/10 py-6 text-center text-xs text-white/25">
-                  Drop a deal here
+                <p className="rounded-md border border-dashed border-white/10 py-4 text-center text-xs text-white/25">
+                  Drop here
                 </p>
               ) : (
                 stageDeals.map((deal) => (
                   <article
                     key={deal.id}
                     draggable
+                    title={
+                      deal.nextAction
+                        ? `Next: ${deal.nextAction}\n${activityLabel(deal.lastActivityAt)}${
+                            deal.lastSignal ? ` · ${signalLabel(deal.lastSignal)}` : ""
+                          }`
+                        : `${activityLabel(deal.lastActivityAt)}${
+                            deal.lastSignal ? ` · ${signalLabel(deal.lastSignal)}` : ""
+                          }`
+                    }
                     onDragStart={() => setDragId(deal.id)}
                     onDragEnd={() => {
                       setDragId(null);
                       setOverStage(null);
                     }}
-                    className={`cursor-grab rounded-md border border-white/10 bg-white/[0.04] p-3 active:cursor-grabbing ${
+                    className={`cursor-grab rounded-md border border-white/10 bg-white/[0.04] p-2 active:cursor-grabbing ${
                       dragId === deal.id ? "opacity-50" : ""
                     }`}
                   >
-                    <div className="font-medium leading-snug">{deal.name}</div>
-                    <div className="mt-1 flex items-center gap-2 text-sm">
+                    <div className="line-clamp-2 text-sm font-medium leading-tight">
+                      {deal.name}
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
                       {deal.amount ? (
-                        <span className="font-semibold text-emerald-300">
+                        <span className="text-sm font-semibold text-emerald-300">
                           {money(deal.amount)}
                         </span>
                       ) : null}
                       {deal.probability !== null ? (
-                        <span className="text-xs text-white/40">
-                          {deal.probability}%
-                        </span>
+                        <span className="text-xs text-white/40">{deal.probability}%</span>
                       ) : null}
                     </div>
                     {deal.nextAction ? (
-                      <p className="mt-2 text-sm text-white/70">{deal.nextAction}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-white/55">
+                        {deal.nextAction}
+                      </p>
                     ) : null}
-                    <div className="mt-2 text-xs text-white/35">
+                    <div className="mt-1 truncate text-[11px] text-white/35">
                       {deal.clientDisplayName ? (
                         <Link
                           href={`/clients/${deal.clientId}`}
@@ -145,23 +156,17 @@ export function PipelineBoard({ initialDeals }: { initialDeals: DealListItem[] }
                           {deal.clientDisplayName}
                         </Link>
                       ) : (
-                        <span>Unlinked prospect</span>
+                        <span>Unlinked</span>
                       )}
-                      <span>
-                        {" · "}
-                        {activityLabel(deal.lastActivityAt)}
-                        {deal.lastSignal ? ` · ${signalLabel(deal.lastSignal)}` : ""}
-                      </span>
+                      {deal.lastSignal ? ` · ${signalLabel(deal.lastSignal)}` : ""}
                     </div>
                     {deal.suggestedStage ? (
                       <button
                         type="button"
                         onClick={() => onDropSuggestion(deal.id, deal.suggestedStage!)}
-                        className="mt-2 block w-full rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-1 text-left text-xs text-amber-200 hover:bg-amber-400/20"
+                        className="mt-1.5 block w-full rounded border border-amber-400/40 bg-amber-400/10 px-1.5 py-1 text-left text-[11px] leading-tight text-amber-200 hover:bg-amber-400/20"
                       >
-                        Gmail suggests{" "}
-                        <strong>{PIPELINE_STAGE_LABELS[deal.suggestedStage]}</strong> —
-                        confirm
+                        Gmail: <strong>{PIPELINE_STAGE_LABELS[deal.suggestedStage]}</strong>?
                       </button>
                     ) : null}
                   </article>

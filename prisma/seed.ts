@@ -25,7 +25,14 @@ async function main() {
   const org = await prisma.organization.upsert({
     where: { id: "seed-org" },
     update: {},
-    create: { id: "seed-org", name: "Demo Brokerage" },
+    create: {
+      id: "seed-org",
+      name: "Demo Brokerage",
+      // Example revenue targets so the "how we stand" view has something to show.
+      monthlyRevenueGoal: "20000",
+      quarterlyRevenueGoal: "50000",
+      annualRevenueGoal: "200000",
+    },
   });
 
   const passwordHash = await bcrypt.hash("password123", 12);
@@ -82,7 +89,20 @@ async function main() {
     // open-pipeline sizing, not booked revenue. The suggestedStage on the proposed
     // deal shows a Gmail-raised outcome the broker would confirm; it is never auto-set.
     const days = (n: number) => new Date(Date.now() - n * 86_400_000);
-    const SYNTHETIC_DEALS = [
+    const SYNTHETIC_DEALS: {
+      name: string;
+      stage: PipelineStage;
+      amount: string;
+      probability: number;
+      nextAction: string;
+      wonAt?: Date | null;
+      email: string;
+      clientId: string | null;
+      gmailThreadId: string | null;
+      lastActivityAt: Date;
+      lastSignal: string | null;
+      suggestedStage: PipelineStage | null;
+    }[] = [
       {
         name: "Lovelace Auto — new business",
         stage: PipelineStage.QUOTING,
@@ -128,6 +148,7 @@ async function main() {
         amount: "26000",
         probability: 100,
         nextAction: "Issue policy documents.",
+        wonAt: days(10), // won this month, so it counts toward the goals
         email: "charles@example.com",
         clientId: null,
         gmailThreadId: "thread-babbage-001",
@@ -173,6 +194,7 @@ async function main() {
           amount: d.amount,
           probability: d.probability,
           nextAction: d.nextAction,
+          wonAt: d.wonAt ?? null,
           counterpartyEmailEnc: encryptOptional(d.email),
           counterpartyEmailHash: hashEmailOptional(d.email),
           gmailThreadId: d.gmailThreadId,

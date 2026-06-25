@@ -9,11 +9,13 @@ import { createClient, updateClient } from "@/lib/clients";
 import { createRiskProfile, updateRiskProfile } from "@/lib/riskProfiles";
 import { createPolicy, updatePolicy } from "@/lib/policies";
 import { createDeal, updateDealStage } from "@/lib/deals";
+import { updateGoals } from "@/lib/goals";
 import { requireSession } from "@/lib/session";
 import {
   clientInputSchema,
   dealInputSchema,
   dealStageSchema,
+  goalsInputSchema,
   parseAttributePairs,
   parseCoverageRows,
   policyInputSchema,
@@ -328,6 +330,33 @@ export async function createDealAction(
     await createDeal(userId, organizationId, parsed.data);
   } catch {
     return { error: "Could not save deal. Please try again." };
+  }
+
+  revalidatePath("/pipeline");
+  return {};
+}
+
+/** Updates the org's monthly / quarterly / annual revenue goals, then refreshes the board. */
+export async function updateGoalsAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const { userId, organizationId } = await requireSession();
+
+  const parsed = goalsInputSchema.safeParse({
+    monthly: formData.get("monthly") || "",
+    quarterly: formData.get("quarterly") || "",
+    annual: formData.get("annual") || "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+
+  try {
+    await updateGoals(userId, organizationId, parsed.data);
+  } catch (err) {
+    unstable_rethrow(err);
+    return { error: "Could not save goals. Please try again." };
   }
 
   revalidatePath("/pipeline");

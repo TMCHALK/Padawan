@@ -6,6 +6,7 @@ import {
   isClosedStage,
   isInProgressStage,
   isOutcomeStage,
+  summarizeGoals,
   summarizePipeline,
   type DealActivityState,
 } from "@/lib/pipeline";
@@ -261,5 +262,40 @@ describe("summarizePipeline", () => {
     expect(empty.total).toBe(0);
     expect(empty.openValue).toBe(0);
     expect(empty.valueByStage[PipelineStage.PROPOSED]).toBe(0);
+  });
+});
+
+describe("summarizeGoals", () => {
+  // Mid-Q2: June 15, 2026. Month = June, quarter = Apr–Jun, year = 2026.
+  const now = new Date(2026, 5, 15);
+  const goals = { monthly: 20000, quarterly: 50000, annual: 200000 };
+
+  it("buckets won revenue into month / quarter / year and computes % of goal", () => {
+    const summary = summarizeGoals(now, goals, [
+      { amount: 10000, wonAt: new Date(2026, 5, 3) }, // this month
+      { amount: 5000, wonAt: new Date(2026, 4, 20) }, // this quarter, not month (May)
+      { amount: 8000, wonAt: new Date(2026, 1, 10) }, // this year, not quarter (Feb)
+      { amount: 9999, wonAt: new Date(2025, 11, 31) }, // last year — excluded everywhere
+    ]);
+
+    expect(summary.month.won).toBe(10000);
+    expect(summary.month.pct).toBe(50); // 10000 / 20000
+    expect(summary.quarter.won).toBe(15000); // 10000 + 5000
+    expect(summary.quarter.pct).toBe(30); // 15000 / 50000
+    expect(summary.year.won).toBe(23000); // 10000 + 5000 + 8000
+    expect(summary.year.pct).toBe(12); // round(23000 / 200000 * 100)
+  });
+
+  it("returns null percentages when a goal is unset or zero, but still sums won", () => {
+    const summary = summarizeGoals(
+      now,
+      { monthly: null, quarterly: 0, annual: 100000 },
+      [{ amount: 4000, wonAt: new Date(2026, 5, 1) }],
+    );
+    expect(summary.month.goal).toBeNull();
+    expect(summary.month.pct).toBeNull();
+    expect(summary.month.won).toBe(4000);
+    expect(summary.quarter.pct).toBeNull(); // zero goal → no divide
+    expect(summary.year.pct).toBe(4);
   });
 });

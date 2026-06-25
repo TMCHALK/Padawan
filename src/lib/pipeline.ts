@@ -341,3 +341,71 @@ export function summarizePipeline(
     pendingSuggestions,
   };
 }
+
+// --- Revenue goals -------------------------------------------------------------
+
+export interface GoalLine {
+  /** The target for the period, or null if unset. */
+  goal: number | null;
+  /** Won revenue in the period so far. */
+  won: number;
+  /** Percent of goal achieved (rounded), or null when no positive goal is set. */
+  pct: number | null;
+}
+
+export interface GoalsSummary {
+  month: GoalLine;
+  quarter: GoalLine;
+  year: GoalLine;
+}
+
+function startOfMonth(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+}
+function startOfQuarter(d: Date): number {
+  return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1).getTime();
+}
+function startOfYear(d: Date): number {
+  return new Date(d.getFullYear(), 0, 1).getTime();
+}
+
+/**
+ * Pure "how we stand" calc: sums won revenue in the current month / quarter / year and
+ * compares it to each goal. `wonDeals` are deals currently marked WON with a wonAt date.
+ * Periods nest (anything won this month is also this quarter and year), so a single pass
+ * with `now`'s boundaries is enough. Goal of null/0 yields a null percentage (no divide).
+ */
+export function summarizeGoals(
+  now: Date,
+  goals: { monthly: number | null; quarterly: number | null; annual: number | null },
+  wonDeals: { amount: number; wonAt: Date }[],
+): GoalsSummary {
+  const mStart = startOfMonth(now);
+  const qStart = startOfQuarter(now);
+  const yStart = startOfYear(now);
+
+  let month = 0;
+  let quarter = 0;
+  let year = 0;
+  for (const d of wonDeals) {
+    const t = d.wonAt.getTime();
+    const amt = Number.isFinite(d.amount) ? d.amount : 0;
+    if (t >= yStart) {
+      year += amt;
+      if (t >= qStart) quarter += amt;
+      if (t >= mStart) month += amt;
+    }
+  }
+
+  const line = (goal: number | null, won: number): GoalLine => ({
+    goal: goal ?? null,
+    won,
+    pct: goal && goal > 0 ? Math.round((won / goal) * 100) : null,
+  });
+
+  return {
+    month: line(goals.monthly, month),
+    quarter: line(goals.quarterly, quarter),
+    year: line(goals.annual, year),
+  };
+}
